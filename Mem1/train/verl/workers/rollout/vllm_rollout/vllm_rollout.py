@@ -100,7 +100,9 @@ class vLLMRollout(BaseRollout):
                                     load_format=config.load_format)
 
         # Offload vllm model to reduce peak memory usage
-        self.inference_engine.offload_model_weights()
+        # NOTE(verl-opt): Skip offload if keep_on_gpu is configured
+        if not config.get('keep_on_gpu', False):
+            self.inference_engine.offload_model_weights()
 
         kwargs = dict(
             n=1,

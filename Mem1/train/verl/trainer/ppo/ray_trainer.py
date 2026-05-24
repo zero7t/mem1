@@ -681,7 +681,7 @@ class RayPPOTrainer(object):
         self.global_steps = 0
         # perform validation before training
         # currently, we only support validation using the reward_function.
-        if self.val_reward_fn is not None and self.config.trainer.get('val_before_train', True):
+        if self.val_reward_fn is not None and self.config.trainer.get('val_before_train', False):
             val_metrics = self._validate()
 
             pprint(f'Initial validation metrics: {val_metrics}')
@@ -760,8 +760,20 @@ class RayPPOTrainer(object):
                                 final_gen_batch_output.batch[key] = final_gen_batch_output.batch[key].long()
 
                         with torch.no_grad():
+                            # Set required meta_info for compute_log_prob
+                            final_gen_batch_output.meta_info['micro_batch_size'] = self.config.actor_rollout_ref.rollout.log_prob_micro_batch_size
+                            final_gen_batch_output.meta_info['temperature'] = self.config.actor_rollout_ref.rollout.temperature
+                            final_gen_batch_output.meta_info['use_dynamic_bsz'] = self.config.actor_rollout_ref.rollout.get('log_prob_use_dynamic_bsz', False)
+                            final_gen_batch_output.meta_info['max_token_len'] = self.config.actor_rollout_ref.rollout.get('log_prob_max_token_len_per_gpu', 16384)
+                            # Remove attention_mask_4d before compute_log_prob to avoid
+                            # transferring ~2GB tensor through Ray object store (causes hang)
+                            # It will be added back after for update_policy
+                            attn_mask_4d = final_gen_batch_output.batch.pop('attention_mask_4d', None)
                             output = self.actor_rollout_wg.compute_log_prob(final_gen_batch_output)
                             final_gen_batch_output = final_gen_batch_output.union(output)
+                            # Restore attention_mask_4d for later use in update_policy
+                            if attn_mask_4d is not None:
+                                final_gen_batch_output.batch['attention_mask_4d'] = attn_mask_4d
 
                         # batch.non_tensor_batch['uid'] = np.array([str(uuid.uuid4()) for _ in range(len(batch.batch))],
                         #                                         dtype=object)
@@ -791,9 +803,13 @@ class RayPPOTrainer(object):
 
                     if self.use_reference_policy:
                         # compute reference log_prob
+                        # Remove attention_mask_4d to avoid transferring ~2GB tensor through Ray
                         with _timer('ref', timing_raw):
+                            attn_mask_4d_ref = batch.batch.pop('attention_mask_4d', None)
                             ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(batch)
                             batch = batch.union(ref_log_prob)
+                            if attn_mask_4d_ref is not None:
+                                batch.batch['attention_mask_4d'] = attn_mask_4d_ref
 
                     # compute values
                     if self.use_critic:

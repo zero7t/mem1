@@ -363,9 +363,12 @@ __MODEL_DTENSOR_WEIGHT_LOADER_REGISTRY__ = {
 def load_dtensor_weights(actor_weights: Dict, vllm_model: nn.Module):
     weight_loader = _get_model_weight_loader(vllm_model.__class__.__name__)
     weight_loader(actor_weights, vllm_model)
-    # NOTE(sgm) to reduce peak memory usage, we offload vllm model to cpu
-    # after init, and we need this after sync model weights for in first iter.
-    vllm_model = vllm_model.cuda()
+    # NOTE(verl-opt): Only move to CUDA if model is not already on GPU.
+    # When keep_on_gpu optimization is enabled, the model stays on GPU
+    # and weights are updated in-place, avoiding the costly CPU->GPU transfer.
+    first_param = next(vllm_model.parameters(), None)
+    if first_param is not None and not first_param.is_cuda:
+        vllm_model = vllm_model.cuda()
 
 
 def _get_model_weight_loader(arch: str):

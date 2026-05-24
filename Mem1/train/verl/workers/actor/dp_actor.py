@@ -53,12 +53,13 @@ class DataParallelPPOActor(BasePPOActor):
         self.ulysses_sequence_parallel_size = self.config.ulysses_sequence_parallel_size
         self.use_ulysses_sp = self.ulysses_sequence_parallel_size > 1
 
-        self.compute_entropy_from_logits = torch.compile(verl_F.entropy_from_logits, dynamic=True)
+        # Disable torch.compile - causes hangs with FSDP ref model forward
+        self.compute_entropy_from_logits = verl_F.entropy_from_logits
 
-    def _forward_micro_batch(self, micro_batch, temperature) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _forward_micro_batch(self, micro_batch, temperature, compute_entropy=True) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Returns: 
-            entropy: # (bs, response_len)
+        Returns:
+            entropy: # (bs, response_len) or None if compute_entropy=False
             log_probs: # (bs, response_len)
         """
         response_length = micro_batch['responses'].size(-1)
@@ -104,7 +105,7 @@ class DataParallelPPOActor(BasePPOActor):
                 logits_rmpad.div_(temperature)
 
                 # compute entropy
-                entropy_rmpad = self.compute_entropy_from_logits(logits_rmpad)  # ((total_nnz / sp) + pad)
+                entropy_rmpad = self.compute_entropy_from_logits(logits_rmpad) if compute_entropy else None
 
                 # if use_sp: ((total_nnz / sp) + pad) ; if not use_sp: (batch, seqlen)
                 log_probs = logprobs_from_logits(logits=logits_rmpad, labels=input_ids_rmpad_rolled)
@@ -113,22 +114,26 @@ class DataParallelPPOActor(BasePPOActor):
                 if self.use_ulysses_sp:
                     # gather and unpad for the ulysses sp
                     log_probs = gather_outpus_and_unpad(log_probs, gather_dim=0, unpad_dim=0, padding_size=pad_size)
-                    entropy_rmpad = gather_outpus_and_unpad(entropy_rmpad,
-                                                            gather_dim=0,
-                                                            unpad_dim=0,
-                                                            padding_size=pad_size)
+                    if entropy_rmpad is not None:
+                        entropy_rmpad = gather_outpus_and_unpad(entropy_rmpad,
+                                                                gather_dim=0,
+                                                                unpad_dim=0,
+                                                                padding_size=pad_size)
                 # pad back to (bsz, seqlen)
-                full_entropy = pad_input(hidden_states=entropy_rmpad.unsqueeze(-1),
-                                         indices=indices,
-                                         batch=batch_size,
-                                         seqlen=seqlen)
+                if entropy_rmpad is not None:
+                    full_entropy = pad_input(hidden_states=entropy_rmpad.unsqueeze(-1),
+                                             indices=indices,
+                                             batch=batch_size,
+                                             seqlen=seqlen)
+                    entropy = full_entropy.squeeze(-1)[:, -response_length - 1:-1]
+                else:
+                    entropy = None
                 full_log_probs = pad_input(hidden_states=log_probs.unsqueeze(-1),
                                            indices=indices,
                                            batch=batch_size,
                                            seqlen=seqlen)
 
                 # only return response part:
-                entropy = full_entropy.squeeze(-1)[:, -response_length - 1:-1]  # (bsz, response_length)
                 log_probs = full_log_probs.squeeze(-1)[:, -response_length - 1:-1]  # (bsz, response_length)
 
             else:  # not using rmpad and no ulysses sp
@@ -140,7 +145,7 @@ class DataParallelPPOActor(BasePPOActor):
                 logits.div_(temperature)
                 logits = logits[:, -response_length - 1:-1]  # (bsz, response_length)
                 log_probs = logprobs_from_logits(logits, micro_batch['responses'])
-                entropy = verl_F.entropy_from_logits(logits)  # (bsz, response_length)
+                entropy = verl_F.entropy_from_logits(logits) if compute_entropy else None
 
             return entropy, log_probs
 
@@ -191,11 +196,10 @@ class DataParallelPPOActor(BasePPOActor):
             micro_batches, indices = rearrange_micro_batches(batch=batch, max_token_len=max_token_len)
         else:
             micro_batches = batch.split(micro_batch_size)
-
         log_probs_lst = []
-        for micro_batch in micro_batches:
+        for i, micro_batch in enumerate(micro_batches):
             with torch.no_grad():
-                _, log_probs = self._forward_micro_batch(micro_batch, temperature=temperature)
+                _, log_probs = self._forward_micro_batch(micro_batch, temperature=temperature, compute_entropy=False)
             log_probs_lst.append(log_probs)
         log_probs = torch.concat(log_probs_lst, dim=0)
 
@@ -208,6 +212,13 @@ class DataParallelPPOActor(BasePPOActor):
         return log_probs
 
     def update_policy(self, data: DataProto):
+        """
+        [IMPROVED] update_policy with LLDS-MA + DAPO Clip-Higher.
+
+        New config fields (optional, with defaults):
+            self.config.llds_lambda: float (default 0.1)
+            self.config.clip_higher: float (default 0.28)
+        """
         # make sure we are in training mode
         self.actor_module.train()
 
@@ -215,7 +226,11 @@ class DataParallelPPOActor(BasePPOActor):
         self.gradient_accumulation = self.config.ppo_mini_batch_size // self.config.ppo_micro_batch_size
         temperature = data.meta_info['temperature']  # temperature must be in the data.meta_info to avoid slient error
 
-        select_keys = ['responses', 'input_ids', 'attention_mask', 'attention_mask_4d', 'position_ids', 'old_log_probs', 'advantages']
+        # [LLDS] Config
+        llds_lambda = self.config.get('llds_lambda', 0.1)
+        clip_higher = self.config.get('clip_higher', 0.28)
+
+        select_keys = ['responses', 'input_ids', 'attention_mask', 'position_ids', 'old_log_probs', 'advantages']
         if self.config.state_masking:
             select_keys.append('loss_mask')
         if self.config.use_kl_loss:
@@ -256,11 +271,13 @@ class DataParallelPPOActor(BasePPOActor):
                 # all return: (bsz, response_length)
                 entropy, log_prob = self._forward_micro_batch(micro_batch=data, temperature=temperature)
 
+                # [DAPO] Clip-Higher: asymmetric clipping
                 pg_loss, pg_clipfrac, ppo_kl = core_algos.compute_policy_loss(old_log_prob=old_log_prob,
                                                                               log_prob=log_prob,
                                                                               advantages=advantages,
                                                                               eos_mask=response_mask,
-                                                                              cliprange=clip_ratio)
+                                                                              cliprange=clip_ratio,
+                                                                              clip_higher=clip_higher)
                 # compute entropy loss from entropy
                 entropy_loss = verl_F.masked_mean(entropy, response_mask)
 
@@ -278,6 +295,22 @@ class DataParallelPPOActor(BasePPOActor):
                     policy_loss = policy_loss + kl_loss * self.config.kl_loss_coef
                     metrics['actor/kl_loss'] = kl_loss.detach().item()
                     metrics['actor/kl_coef'] = self.config.kl_loss_coef
+
+                # [LLDS-MA] Likelihood-preserving regularization
+                if llds_lambda > 0:
+                    llds_loss, llds_metrics = core_algos.compute_llds_loss(
+                        old_log_probs=old_log_prob,
+                        new_log_probs=log_prob,
+                        eos_mask=response_mask,
+                        advantages=advantages,
+                        answer_mask=None,  # No explicit answer_mask available here
+                        mask_answer=False  # Will use full response for now
+                    )
+                    policy_loss = policy_loss + llds_lambda * llds_loss
+                    append_to_dict(metrics, {
+                        'llds/loss': llds_loss.detach().item(),
+                        'llds/num_active': llds_metrics['llds/num_active'],
+                    })
 
                 loss = policy_loss / self.gradient_accumulation
                 loss.backward()

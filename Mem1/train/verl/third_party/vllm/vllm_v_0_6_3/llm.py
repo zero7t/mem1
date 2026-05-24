@@ -198,3 +198,7 @@ class LLM(LLM):
 
     def offload_model_weights(self) -> None:
         self.llm_engine.offload_model_weights()
+
+    def set_keep_on_gpu(self, keep_on_gpu: bool) -> None:
+        """Set whether to keep vLLM model weights on GPU (skip offload/reload)."""
+        self.llm_engine.model_executor.worker.keep_on_gpu = keep_on_gpu

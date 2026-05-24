@@ -38,11 +38,18 @@ class FSDPVLLMShardingManager(BaseShardingManager):
                  inference_engine: LLM,
                  model_config,
                  full_params: bool = False,
-                 device_mesh: DeviceMesh = None):
+                 device_mesh: DeviceMesh = None,
+                 keep_vllm_on_gpu: bool = False):
         self.module = module
         self.inference_engine = inference_engine
         self.model_config = model_config
         self.device_mesh = device_mesh
+        self.keep_vllm_on_gpu = keep_vllm_on_gpu
+
+        # NOTE(verl-opt): If keep_vllm_on_gpu is set, tell the inference engine
+        # to skip offloading model weights to CPU after inference
+        if keep_vllm_on_gpu:
+            self.inference_engine.set_keep_on_gpu(True)
 
         # Full params
         self.full_params = full_params

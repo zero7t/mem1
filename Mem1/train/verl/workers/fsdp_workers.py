@@ -276,7 +276,8 @@ class ActorRolloutRefWorker(Worker):
                                                                inference_engine=rollout.inference_engine,
                                                                model_config=self.actor_model_config,
                                                                full_params='hf' in self.config.rollout.load_format,
-                                                               device_mesh=rollout_device_mesh)
+                                                               device_mesh=rollout_device_mesh,
+                                                               keep_vllm_on_gpu=self.config.rollout.get('keep_on_gpu', False))
             log_gpu_memory_usage('After building sharding manager', logger=None)
 
         return rollout, rollout_sharding_manager
@@ -330,6 +331,7 @@ class ActorRolloutRefWorker(Worker):
 
         if self._is_rollout:
             self.rollout, self.rollout_sharding_manager = self._build_rollout()
+            self._in_generation_mode = False
 
         if self._is_ref:
             self.ref_module_fsdp = self._build_model_optimizer(model_path=self.config.model.path,
@@ -403,7 +405,13 @@ class ActorRolloutRefWorker(Worker):
         data = data.to('cuda')
 
         assert self._is_rollout
-        if self._is_offload_param:
+
+        # Exit multi-turn generation mode if still active
+        if self._in_generation_mode:
+            self.rollout_sharding_manager.__exit__(None, None, None)
+            self._in_generation_mode = False
+            # FSDP params already loaded from generation mode, no need to reload
+        elif self._is_offload_param:
             load_fsdp_param_and_grad(module=self.actor_module_fsdp,
                                      device_id=torch.cuda.current_device(),
                                      load_grad=self._is_offload_grad)
@@ -417,7 +425,7 @@ class ActorRolloutRefWorker(Worker):
             old_log_probs = self.actor.compute_log_prob(data=data)
             output = DataProto.from_dict(tensors={'old_log_probs': old_log_probs})
             output = self.ulysses_sharding_manager.postprocess_data(output)
-            
+
         output = output.to('cpu')
 
         if self._is_offload_param:
@@ -428,38 +436,40 @@ class ActorRolloutRefWorker(Worker):
         log_gpu_memory_usage('After recompute log prob', logger=logger)
         return output
         
+
     @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
     def generate_sequences(self, prompts: DataProto):
         prompts = prompts.to('cuda')
-        # set to False if it is validation
         recompute_log_prob = prompts.meta_info.get('recompute_log_prob', True)
+        # Multi-turn optimization: keep sharding manager open across turns
+        keep_generation_mode = prompts.meta_info.get('keep_generation_mode', False)
 
         assert self._is_rollout
-        if self._is_offload_param:
-            load_fsdp_param_and_grad(module=self.actor_module_fsdp,
-                                     device_id=torch.cuda.current_device(),
-                                     load_grad=self._is_offload_grad)
+
+        # Enter generation mode if not already in it
+        if not self._in_generation_mode:
+            if self._is_offload_param:
+                load_fsdp_param_and_grad(module=self.actor_module_fsdp,
+                                         device_id=torch.cuda.current_device(),
+                                         load_grad=self._is_offload_grad)
+            self.rollout_sharding_manager.__enter__()
+            self._in_generation_mode = True
+            log_gpu_memory_usage('After entering rollout sharding manager', logger=logger)
 
         prompts.batch = prompts.batch.cuda()
         meta_info = {'eos_token_id': self.tokenizer.eos_token_id, 'pad_token_id': self.tokenizer.pad_token_id}
         prompts.meta_info.update(meta_info)
-        with self.rollout_sharding_manager:
-            log_gpu_memory_usage('After entering rollout sharding manager', logger=logger)
 
-            prompts = self.rollout_sharding_manager.preprocess_data(prompts)
-            output = self.rollout.generate_sequences(prompts=prompts)
-
-            log_gpu_memory_usage('After rollout generation', logger=logger)
-
-            output = self.rollout_sharding_manager.postprocess_data(output)
+        prompts = self.rollout_sharding_manager.preprocess_data(prompts)
+        output = self.rollout.generate_sequences(prompts=prompts)
+        log_gpu_memory_usage('After rollout generation', logger=logger)
+        output = self.rollout_sharding_manager.postprocess_data(output)
 
         if self._is_actor and recompute_log_prob:
-            # we should always recompute old_log_probs when it is HybridEngine
             output.meta_info['micro_batch_size'] = self.config.rollout.log_prob_micro_batch_size
             output.meta_info['max_token_len'] = self.config.rollout.log_prob_max_token_len_per_gpu
             output.meta_info['use_dynamic_bsz'] = self.config.rollout.log_prob_use_dynamic_bsz
             output.meta_info['temperature'] = self.config.rollout.temperature
-            # perform recompute log_prob
             with self.ulysses_sharding_manager:
                 output = self.ulysses_sharding_manager.preprocess_data(output)
                 old_log_probs = self.actor.compute_log_prob(data=output)
@@ -468,12 +478,15 @@ class ActorRolloutRefWorker(Worker):
 
         output = output.to('cpu')
 
-        if self._is_offload_param:
-            # NOTE(sgm): the grad is already in CPU, only offload param here
-            offload_fsdp_param_and_grad(module=self.actor_module_fsdp, offload_grad=self._is_offload_grad)
-        # clear kv cache
-        torch.cuda.empty_cache()
-        log_gpu_memory_usage('After recompute log prob', logger=logger)
+        # Exit generation mode only if not keeping it open for multi-turn
+        if not keep_generation_mode:
+            self.rollout_sharding_manager.__exit__(None, None, None)
+            self._in_generation_mode = False
+            if self._is_offload_param:
+                offload_fsdp_param_and_grad(module=self.actor_module_fsdp, offload_grad=self._is_offload_grad)
+            torch.cuda.empty_cache()
+            log_gpu_memory_usage('After generate_sequences', logger=logger)
+
         return output
 
     @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)

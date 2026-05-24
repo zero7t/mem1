@@ -136,6 +136,9 @@ class Worker(Worker):
 
         # NOTE(sgm): [VERL] For offloading inference engine params
         self.cpu_model = None
+        # NOTE(verl-opt): When True, skip offloading vLLM model to CPU
+        # to avoid costly CPU<->GPU weight transfers every step
+        self.keep_on_gpu = False
 
     def init_device(self) -> None:
         if self.device_config.device.type == "cuda":
@@ -281,6 +284,9 @@ class Worker(Worker):
             load_dtensor_weights(actor_weights, self.model_runner.model)
 
     def offload_model_weights(self) -> None:
+        # NOTE(verl-opt): Skip offloading if keep_on_gpu is set
+        if self.keep_on_gpu:
+            return
         if self.cpu_model == None:
             self.cpu_model = {}
             for name, params in self.model_runner.model.named_parameters():

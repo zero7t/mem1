@@ -110,24 +110,23 @@ def compute_gae_advantage_return(token_level_rewards: torch.Tensor, values: torc
 
 
 # NOTE(sgm): this implementation only consider outcome supervision, where the reward is a scalar.
+# [IMPROVED] Dr.GRPO + DAPO dynamic sampling
 def compute_grpo_outcome_advantage(token_level_rewards: torch.Tensor,
                                    eos_mask: torch.Tensor,
                                    index: torch.Tensor,
                                    epsilon: float = 1e-6):
     """
-    Compute advantage for GRPO, operating only on Outcome reward 
-    (with only one scalar reward for each response).
+    Compute advantage for GRPO with Dr.GRPO + DAPO improvements.
+
+    Dr.GRPO fix: Do NOT divide by group std for binary/sparse rewards.
+      - Only subtract group mean as baseline
+      - Groups with zero variance get zero advantage (DAPO dynamic sampling)
+      - This avoids amplifying noisy groups and wasting gradient on uninformative groups
+
     Args:
-        token_level_rewards: `(torch.Tensor)`
-            shape: (bs, response_length)
-        eos_mask: `(torch.Tensor)`
-            shape: (bs, response_length)
-    
-    Returns:
-        advantages: `(torch.Tensor)`
-            shape: (bs, response_length)
-        Returns: `(torch.Tensor)`
-            shape: (bs, response_length)
+        token_level_rewards: shape (bs, response_length)
+        eos_mask: shape (bs, response_length)
+        index: group index for each sample
     """
     response_length = token_level_rewards.shape[-1]
     non_zero_mask = (token_level_rewards != 0)
@@ -140,18 +139,26 @@ def compute_grpo_outcome_advantage(token_level_rewards: torch.Tensor,
     with torch.no_grad():
         bsz = scores.shape[0]
         for i in range(bsz):
-            id2score[index[i]].append(scores[i])
+            id2score[index[i]].append(scores[i].item())
         for idx in id2score:
-            if len(id2score[idx]) == 1:
-                id2mean[idx] = torch.tensor(0.0)
-                id2std[idx] = torch.tensor(1.0)
-            elif len(id2score[idx]) > 1:
-                id2mean[idx] = torch.mean(torch.tensor(id2score[idx]))
-                id2std[idx] = torch.std(torch.tensor([id2score[idx]]))
+            group_scores = id2score[idx]
+            if len(group_scores) == 1:
+                id2mean[idx] = 0.0
+                id2std[idx] = 1.0
+            elif len(group_scores) > 1:
+                id2mean[idx] = float(np.mean(group_scores))
+                id2std[idx] = float(np.std(group_scores))
             else:
                 raise ValueError(f"no score in prompt index: {idx}")
         for i in range(bsz):
-            scores[i] = (scores[i] - id2mean[index[i]]) / (id2std[index[i]] + epsilon)
+            idx = index[i]
+            # [DAPO] Dynamic sampling: skip groups where all rewards are identical
+            if id2std[idx] < epsilon:
+                scores[i] = 0.0
+            else:
+                # [Dr.GRPO] Mean-only baseline, no std normalization
+                # This avoids amplifying binary reward groups
+                scores[i] = scores[i] - id2mean[idx]
         scores = scores.unsqueeze(-1).tile([1, response_length]) * eos_mask
 
     return scores, scores
@@ -162,35 +169,29 @@ def compute_rewards(token_level_scores, old_log_prob, ref_log_prob, kl_ratio):
     return token_level_scores - kl * kl_ratio
 
 
-def compute_policy_loss(old_log_prob, log_prob, advantages, eos_mask, cliprange):
-    """Adapted from https://github.com/huggingface/trl/blob/main/trl/trainer/ppo_trainer.py#L1122
+# [IMPROVED] DAPO Clip-Higher: asymmetric clipping
+def compute_policy_loss(old_log_prob, log_prob, advantages, eos_mask, cliprange, clip_higher=None):
+    """PPO-style policy loss with DAPO Clip-Higher support.
 
     Args:
-        old_log_prob: `(torch.Tensor)`
-            shape: (bs, response_length)
-        log_prob: `(torch.Tensor)`
-            shape: (bs, response_length)
-        advantages: `(torch.Tensor)`
-            shape: (bs, response_length)
-        eos_mask: `(torch.Tensor)`
-            shape: (bs, response_length)
-        cliprange: (float)
-            The clip range used in PPO. See https://arxiv.org/abs/1707.06347
+        old_log_prob: (bs, response_length)
+        log_prob: (bs, response_length)
+        advantages: (bs, response_length)
+        eos_mask: (bs, response_length)
+        cliprange: lower clip range (e.g., 0.2)
+        clip_higher: upper clip range (e.g., 0.28). If None, uses cliprange (symmetric).
 
-    Returns:
-        pg_loss: `a scalar torch.Tensor`
-            policy gradient loss computed via PPO
-        pg_clipfrac: (float)
-            a float number indicating the fraction of policy gradient loss being clipped
-
+    DAPO Clip-Higher: positive advantage samples get more room to increase ratio.
     """
     negative_approx_kl = log_prob - old_log_prob
-    # negative_approx_kl = torch.clamp(negative_approx_kl, min=torch.log(1e-3), max=torch.log(1e3))
     ratio = torch.exp(negative_approx_kl)
     ppo_kl = verl_F.masked_mean(-negative_approx_kl, eos_mask)
 
+    clip_low = cliprange
+    clip_high = clip_higher if clip_higher is not None else cliprange
+
     pg_losses = -advantages * ratio
-    pg_losses2 = -advantages * torch.clamp(ratio, 1.0 - cliprange, 1.0 + cliprange)
+    pg_losses2 = -advantages * torch.clamp(ratio, 1.0 - clip_low, 1.0 + clip_high)
 
     pg_loss = verl_F.masked_mean(torch.max(pg_losses, pg_losses2), eos_mask)
     pg_clipfrac = verl_F.masked_mean(torch.gt(pg_losses2, pg_losses).float(), eos_mask)
@@ -275,3 +276,81 @@ def kl_penalty(logprob: torch.FloatTensor, ref_logprob: torch.FloatTensor, kl_pe
         raise NotImplementedError
 
     raise NotImplementedError
+
+
+# ============================================================================
+# [LLDS-MA] Likelihood-preserving regularization
+# From: "On GRPO Collapse in Search-R1" (Deng et al., 2025)
+# ============================================================================
+
+def compute_llds_loss(old_log_probs: torch.Tensor,
+                      new_log_probs: torch.Tensor,
+                      eos_mask: torch.Tensor,
+                      advantages: torch.Tensor,
+                      answer_mask: torch.Tensor = None,
+                      mask_answer: bool = True):
+    """
+    Compute LLDS(-MA) regularization loss.
+
+    L_LLDS = (1/N_tokens) * sum_{y_i in Y_pre}
+              1[sum_t(old_lp_t - new_lp_t) > 0]       # response-level gate
+              * sum_t max(0, old_lp_t - new_lp_t)     # token-level penalty
+
+    Y_pre: responses with non-negative advantage (correct + untrained)
+
+    Args:
+        old_log_probs: (bs, response_length) - log probs from old policy
+        new_log_probs: (bs, response_length) - log probs from current policy
+        eos_mask: (bs, response_length) - valid token mask
+        advantages: (bs, response_length) - per-token advantages
+        answer_mask: (bs, response_length) - 1 for answer tokens, 0 otherwise
+        mask_answer: whether to exclude answer tokens (LLDS-MA mode)
+
+    Returns:
+        llds_loss: scalar tensor
+        metrics: dict
+    """
+    with torch.no_grad():
+        # Y_pre: responses with non-negative advantage
+        # All tokens in a response share the same advantage value in GRPO
+        response_advantages = advantages[:, 0]  # (bs,)
+        preserve_mask = (response_advantages >= 0).float()  # (bs,)
+
+        # [LLDS-MA] Mask for regularization (exclude answer tokens if requested)
+        reg_mask = eos_mask.clone()
+        if mask_answer and answer_mask is not None:
+            reg_mask = reg_mask * (1.0 - answer_mask)
+
+        # Response-level gate: computed without grad (just a selection mask)
+        token_disp_detached = (old_log_probs - new_log_probs.detach()) * reg_mask
+        response_displacement = token_disp_detached.sum(dim=-1)  # (bs,)
+        response_gate = (response_displacement > 0).float()  # (bs,)
+
+        # Combined activation mask
+        active_mask = preserve_mask * response_gate  # (bs,)
+
+        # Count for normalization
+        total_active_tokens = (reg_mask * active_mask.unsqueeze(-1)).sum()
+
+    # Token-level penalty (WITH gradient through new_log_probs)
+    # max(0, old - new): gradient w.r.t. new is -1 when old > new, pushing likelihood up
+    token_displacement = (old_log_probs - new_log_probs) * reg_mask
+    token_penalty = torch.clamp(token_displacement, min=0.0)
+
+    # Per-response penalty
+    response_penalty = token_penalty.sum(dim=-1)  # (bs,)
+
+    # Normalize by total active tokens
+    if total_active_tokens > 0:
+        llds_loss = (response_penalty * active_mask).sum() / total_active_tokens
+    else:
+        llds_loss = (response_penalty * 0.0).sum()  # zero but keeps computation graph
+
+    metrics = {
+        'llds/num_active': active_mask.sum().item(),
+        'llds/num_preserved': preserve_mask.sum().item(),
+        'llds/mean_displacement': response_displacement.mean().item(),
+        'llds/loss': llds_loss.item(),
+    }
+
+    return llds_loss, metrics

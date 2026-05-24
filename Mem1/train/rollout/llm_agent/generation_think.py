@@ -181,44 +181,46 @@ class LLMGenerationManager:
         
         return {'responses': responses[:, :max_len], 'responses_with_info_mask': responses_with_info_mask[:, :max_len]}
 
-    def _generate_with_gpu_padding(self, active_batch: DataProto) -> DataProto:
+    def _generate_with_gpu_padding(self, active_batch: DataProto, is_first_turn: bool = False, is_last_turn: bool = False) -> DataProto:
         """
             Wrapper for generation that handles multi-GPU padding requirements.
-            if num_gpus <= 1, return self.actor_rollout_wg.generate_sequences(active_batch)
-            if active_batch size is not divisible by num_gpus, pad with first sequence
-            then remove padding from output
+            Optimization: skip recompute_log_prob on all turns (computed once at end by trainer).
+            Multi-turn optimization: keep_generation_mode=True keeps sharding manager open
+            across turns to avoid repeated weight sync (which causes deadlock).
         """
+        # Skip per-turn log_prob computation (will be done once at end on final trajectory)
+        active_batch.meta_info['recompute_log_prob'] = False
+        # Keep sharding manager open across turns - exit will happen in compute_log_prob
+        active_batch.meta_info['keep_generation_mode'] = True
+
         num_gpus = self.config.num_gpus
         if num_gpus <= 1:
             return self.actor_rollout_wg.generate_sequences(active_batch)
-            
+
         batch_size = active_batch.batch['input_ids'].shape[0]
         remainder = batch_size % num_gpus
-        
+
         for key in active_batch.batch.keys():
             active_batch.batch[key] = active_batch.batch[key].long()
         if remainder == 0:
             return self.actor_rollout_wg.generate_sequences(active_batch)
-        
+
         # Add padding sequences
         padding_size = num_gpus - remainder
         padded_batch = {}
-        
+
         for k, v in active_batch.batch.items():
-            # Use first sequence as padding template
             pad_sequence = v[0:1].repeat(padding_size, *[1] * (len(v.shape) - 1))
             padded_batch[k] = torch.cat([v, pad_sequence], dim=0)
 
         padded_active_batch = DataProto.from_dict(padded_batch)
         for key in padded_active_batch.batch.keys():
             padded_active_batch.batch[key] = padded_active_batch.batch[key].long()
-        
+
         if "stop" in active_batch.meta_info:
-            padded_active_batch.meta_info.update(
-                {
-                    "stop": active_batch.meta_info["stop"]
-                }
-            )
+            padded_active_batch.meta_info.update({"stop": active_batch.meta_info["stop"]})
+        padded_active_batch.meta_info['recompute_log_prob'] = False
+        padded_active_batch.meta_info['keep_generation_mode'] = True
 
         padded_output = self.actor_rollout_wg.generate_sequences(padded_active_batch)
 
@@ -290,7 +292,7 @@ class LLMGenerationManager:
         initial_token_lengths = [0 for _ in range(batch_size)]
         for i in range(batch_size):
             initial_token_lengths[i] = (gen_batch.batch['input_ids'][i] != self.tokenizer.pad_token_id).sum().item()
-        
+
         # step two: Main generation loop
         rollings = gen_batch
         for step in range(self.config.max_turns):
@@ -348,7 +350,7 @@ class LLMGenerationManager:
             #     responses_str = self.tokenizer.batch_decode(rollings_active.batch['input_ids'], skip_special_tokens=True)
 
             #     import pdb; pdb.set_trace()
-                
+
             gen_output = self._generate_with_gpu_padding(rollings_active)
 
             # calculate the peak_seq_token_len and average_token_len_per_turn
@@ -411,7 +413,7 @@ class LLMGenerationManager:
                 responses_ids,
                 next_obs_ids
             )
-        
+
         for i in range(len(reconstruction_list)):
             if "num_rounds" not in reconstruction_list[i]:
                 reconstruction_list[i]["num_rounds"] = self.config.max_turns
