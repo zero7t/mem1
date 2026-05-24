@@ -1,6 +1,62 @@
-# Training Improvements: DAPO-lite + Dr.GRPO + LLDS-MA
+# Training Improvements
 
-## Summary
+## 状态总览 (Status)
+
+| 改进 | 状态 | 效果 |
+|------|------|------|
+| Dr.GRPO (mean-only advantage) | ✅ **已启用** | 梯度稳定性 |
+| DAPO Dynamic Sampling | ✅ **已启用** | 跳过无效group |
+| DAPO Clip-Higher (0.28) | ✅ **已启用** | 正样本强化 |
+| LLDS-MA (λ=0.1) | ✅ **已启用** | 防collapse |
+| Rule Process Reward | ⏳ **待集成** | 密集过程信号 |
+| LLM Outcome Judge (语义EM) | ⏳ **待集成** | 同义词识别 |
+| LLM Process Judge (listwise) | ⏳ **待集成** | tied group利用 |
+| n_agent=4 | ⏳ **待启用** | 更好梯度估计 |
+
+### 当前正在运行的配置
+
+```
+Reward:      纯 outcome = exact_match (0 or 1)
+Advantage:   Dr.GRPO (reward - group_mean, no std division)
+Skip:        DAPO dynamic sampling (全同group → advantage=0)
+Clipping:    asymmetric (low=0.2, high=0.28)
+Regularizer: LLDS-MA (λ=0.1, 防止好轨迹likelihood塌陷)
+Batch:       train_batch_size=96, n_agent=2
+PPO:         mini_batch=192, micro_batch=6
+LR:          2e-7, warmup 5%
+Save:        每100步
+```
+
+### Reward 详细流程（当前版本）
+
+```
+1. 生成阶段 (generation_think.py):
+   - 模型生成 <think><search>query</search> → 获取 <information>
+   - 重复最多 6 轮
+   - 最终输出 <answer>...</answer>
+   - 每步 batch_rewards = 0（格式惩罚已注释掉）
+
+2. 结果评估 (main_ppo.py::RewardManager):
+   - extract_solution(): 提取最后一个 <answer>...</answer> 内容
+   - em_check(answer, ground_truth['target']): exact match
+   - score = 0 (错) or 1 (对)
+   - reward_tensor[i, last_valid_token_pos] = score
+
+3. Advantage 计算 (core_algos.py):
+   - 按 prompt index 分组 (n_agent=2 → 每组2条)
+   - [DAPO] 如果组内 std < epsilon → advantage=0, 跳过
+   - [Dr.GRPO] advantage = score - group_mean (不除std)
+   - 广播到 response 所有 token
+
+4. Policy Update (dp_actor.py):
+   - [DAPO Clip-Higher] clip_low=0.2, clip_high=0.28
+   - [LLDS-MA] 检测好轨迹的likelihood下降，施加惩罚推回
+   - loss = pg_loss - entropy_coeff*entropy + llds_lambda*llds_loss
+```
+
+---
+
+## Phase 1: GRPO 优化（已启用）
 
 Three improvements applied directly to the source code:
 
