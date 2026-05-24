@@ -1,0 +1,437 @@
+2026-05-23 21:34:31,476	INFO worker.py:2012 -- Started a local Ray instance.
+/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+[36m(main_task pid=2695634)[0m {'actor_rollout_ref': {'actor': {'clip_ratio': 0.2,
+[36m(main_task pid=2695634)[0m                                  'entropy_coeff': 0.001,
+[36m(main_task pid=2695634)[0m                                  'fsdp_config': {'fsdp_size': -1,
+[36m(main_task pid=2695634)[0m                                                  'grad_offload': False,
+[36m(main_task pid=2695634)[0m                                                  'optimizer_offload': False,
+[36m(main_task pid=2695634)[0m                                                  'param_offload': True,
+[36m(main_task pid=2695634)[0m                                                  'wrap_policy': {'min_num_params': 0}},
+[36m(main_task pid=2695634)[0m                                  'grad_clip': 1.0,
+[36m(main_task pid=2695634)[0m                                  'kl_loss_coef': 0.001,
+[36m(main_task pid=2695634)[0m                                  'kl_loss_type': 'low_var_kl',
+[36m(main_task pid=2695634)[0m                                  'optim': {'lr': 2e-07,
+[36m(main_task pid=2695634)[0m                                            'lr_warmup_steps_ratio': 0.05,
+[36m(main_task pid=2695634)[0m                                            'min_lr_ratio': None,
+[36m(main_task pid=2695634)[0m                                            'total_training_steps': -1,
+[36m(main_task pid=2695634)[0m                                            'warmup_style': 'constant'},
+[36m(main_task pid=2695634)[0m                                  'ppo_epochs': 1,
+[36m(main_task pid=2695634)[0m                                  'ppo_max_token_len_per_gpu': 16384,
+[36m(main_task pid=2695634)[0m                                  'ppo_micro_batch_size': 2,
+[36m(main_task pid=2695634)[0m                                  'ppo_mini_batch_size': 12,
+[36m(main_task pid=2695634)[0m                                  'shuffle': False,
+[36m(main_task pid=2695634)[0m                                  'state_masking': True,
+[36m(main_task pid=2695634)[0m                                  'strategy': 'fsdp',
+[36m(main_task pid=2695634)[0m                                  'ulysses_sequence_parallel_size': 1,
+[36m(main_task pid=2695634)[0m                                  'use_dynamic_bsz': False,
+[36m(main_task pid=2695634)[0m                                  'use_kl_loss': False},
+[36m(main_task pid=2695634)[0m                        'hybrid_engine': True,
+[36m(main_task pid=2695634)[0m                        'model': {'enable_gradient_checkpointing': True,
+[36m(main_task pid=2695634)[0m                                  'external_lib': None,
+[36m(main_task pid=2695634)[0m                                  'override_config': {},
+[36m(main_task pid=2695634)[0m                                  'path': '/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B',
+[36m(main_task pid=2695634)[0m                                  'use_remove_padding': False},
+[36m(main_task pid=2695634)[0m                        'ref': {'fsdp_config': {'fsdp_size': -1,
+[36m(main_task pid=2695634)[0m                                                'param_offload': True,
+[36m(main_task pid=2695634)[0m                                                'wrap_policy': {'min_num_params': 0}},
+[36m(main_task pid=2695634)[0m                                'log_prob_max_token_len_per_gpu': 16384,
+[36m(main_task pid=2695634)[0m                                'log_prob_micro_batch_size': 1,
+[36m(main_task pid=2695634)[0m                                'log_prob_use_dynamic_bsz': False,
+[36m(main_task pid=2695634)[0m                                'ulysses_sequence_parallel_size': 1},
+[36m(main_task pid=2695634)[0m                        'rollout': {'do_sample': True,
+[36m(main_task pid=2695634)[0m                                    'dtype': 'bfloat16',
+[36m(main_task pid=2695634)[0m                                    'enforce_eager': True,
+[36m(main_task pid=2695634)[0m                                    'free_cache_engine': True,
+[36m(main_task pid=2695634)[0m                                    'gpu_memory_utilization': 0.55,
+[36m(main_task pid=2695634)[0m                                    'ignore_eos': False,
+[36m(main_task pid=2695634)[0m                                    'load_format': 'dummy_dtensor',
+[36m(main_task pid=2695634)[0m                                    'log_prob_max_token_len_per_gpu': 16384,
+[36m(main_task pid=2695634)[0m                                    'log_prob_micro_batch_size': 1,
+[36m(main_task pid=2695634)[0m                                    'log_prob_use_dynamic_bsz': False,
+[36m(main_task pid=2695634)[0m                                    'max_num_batched_tokens': 8192,
+[36m(main_task pid=2695634)[0m                                    'max_num_seqs': 1024,
+[36m(main_task pid=2695634)[0m                                    'n': 1,
+[36m(main_task pid=2695634)[0m                                    'n_agent': 2,
+[36m(main_task pid=2695634)[0m                                    'name': 'vllm',
+[36m(main_task pid=2695634)[0m                                    'prompt_length': 4096,
+[36m(main_task pid=2695634)[0m                                    'response_length': 500,
+[36m(main_task pid=2695634)[0m                                    'temperature': 1,
+[36m(main_task pid=2695634)[0m                                    'tensor_model_parallel_size': 1,
+[36m(main_task pid=2695634)[0m                                    'top_k': -1,
+[36m(main_task pid=2695634)[0m                                    'top_p': 0.95}},
+[36m(main_task pid=2695634)[0m  'algorithm': {'adv_estimator': 'grpo',
+[36m(main_task pid=2695634)[0m                'gamma': 1.0,
+[36m(main_task pid=2695634)[0m                'kl_ctrl': {'kl_coef': 0.001, 'type': 'fixed'},
+[36m(main_task pid=2695634)[0m                'kl_penalty': 'kl',
+[36m(main_task pid=2695634)[0m                'lam': 1.0,
+[36m(main_task pid=2695634)[0m                'no_think_rl': False,
+[36m(main_task pid=2695634)[0m                'state_masking': {'end_state_marker': '</information>',
+[36m(main_task pid=2695634)[0m                                  'start_state_marker': '<information>'}},
+[36m(main_task pid=2695634)[0m  'critic': {'cliprange_value': 0.5,
+[36m(main_task pid=2695634)[0m             'forward_max_token_len_per_gpu': 32768,
+[36m(main_task pid=2695634)[0m             'forward_micro_batch_size': 64,
+[36m(main_task pid=2695634)[0m             'grad_clip': 1.0,
+[36m(main_task pid=2695634)[0m             'model': {'enable_gradient_checkpointing': False,
+[36m(main_task pid=2695634)[0m                       'external_lib': None,
+[36m(main_task pid=2695634)[0m                       'fsdp_config': {'fsdp_size': -1,
+[36m(main_task pid=2695634)[0m                                       'grad_offload': False,
+[36m(main_task pid=2695634)[0m                                       'optimizer_offload': False,
+[36m(main_task pid=2695634)[0m                                       'param_offload': False,
+[36m(main_task pid=2695634)[0m                                       'wrap_policy': {'min_num_params': 0}},
+[36m(main_task pid=2695634)[0m                       'override_config': {},
+[36m(main_task pid=2695634)[0m                       'path': '~/models/deepseek-llm-7b-chat',
+[36m(main_task pid=2695634)[0m                       'tokenizer_path': '/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B',
+[36m(main_task pid=2695634)[0m                       'use_remove_padding': False},
+[36m(main_task pid=2695634)[0m             'optim': {'lr': 1e-05,
+[36m(main_task pid=2695634)[0m                       'lr_warmup_steps_ratio': 0.0,
+[36m(main_task pid=2695634)[0m                       'min_lr_ratio': None,
+[36m(main_task pid=2695634)[0m                       'total_training_steps': -1,
+[36m(main_task pid=2695634)[0m                       'warmup_style': 'constant'},
+[36m(main_task pid=2695634)[0m             'ppo_epochs': 1,
+[36m(main_task pid=2695634)[0m             'ppo_max_token_len_per_gpu': 32768,
+[36m(main_task pid=2695634)[0m             'ppo_micro_batch_size': 64,
+[36m(main_task pid=2695634)[0m             'ppo_mini_batch_size': 12,
+[36m(main_task pid=2695634)[0m             'shuffle': False,
+[36m(main_task pid=2695634)[0m             'strategy': 'fsdp',
+[36m(main_task pid=2695634)[0m             'ulysses_sequence_parallel_size': 1,
+[36m(main_task pid=2695634)[0m             'use_dynamic_bsz': False},
+[36m(main_task pid=2695634)[0m  'data': {'max_obs_length': 500,
+[36m(main_task pid=2695634)[0m           'max_prompt_length': 4096,
+[36m(main_task pid=2695634)[0m           'max_response_length': 500,
+[36m(main_task pid=2695634)[0m           'max_start_length': 2048,
+[36m(main_task pid=2695634)[0m           'prompt_key': 'prompt',
+[36m(main_task pid=2695634)[0m           'return_raw_chat': False,
+[36m(main_task pid=2695634)[0m           'return_raw_input_ids': False,
+[36m(main_task pid=2695634)[0m           'shuffle_train_dataloader': True,
+[36m(main_task pid=2695634)[0m           'tokenizer': None,
+[36m(main_task pid=2695634)[0m           'train_batch_size': 6,
+[36m(main_task pid=2695634)[0m           'train_data_num': None,
+[36m(main_task pid=2695634)[0m           'train_files': 'data/nq_hotpotqa_train_multi_2/train.parquet',
+[36m(main_task pid=2695634)[0m           'val_batch_size': 6,
+[36m(main_task pid=2695634)[0m           'val_data_num': None,
+[36m(main_task pid=2695634)[0m           'val_files': 'data/nq_hotpotqa_train_multi_2/test.parquet'},
+[36m(main_task pid=2695634)[0m  'do_search': True,
+[36m(main_task pid=2695634)[0m  'max_turns': 3,
+[36m(main_task pid=2695634)[0m  'retriever': {'topk': 3, 'url': 'http://127.0.0.1:8013/retrieve'},
+[36m(main_task pid=2695634)[0m  'reward_model': {'enable': False,
+[36m(main_task pid=2695634)[0m                   'forward_max_token_len_per_gpu': 32768,
+[36m(main_task pid=2695634)[0m                   'max_length': None,
+[36m(main_task pid=2695634)[0m                   'micro_batch_size': 64,
+[36m(main_task pid=2695634)[0m                   'model': {'external_lib': None,
+[36m(main_task pid=2695634)[0m                             'fsdp_config': {'min_num_params': 0,
+[36m(main_task pid=2695634)[0m                                             'param_offload': False},
+[36m(main_task pid=2695634)[0m                             'input_tokenizer': '/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B',
+[36m(main_task pid=2695634)[0m                             'path': '~/models/FsfairX-LLaMA3-RM-v0.1',
+[36m(main_task pid=2695634)[0m                             'use_remove_padding': False},
+[36m(main_task pid=2695634)[0m                   'strategy': 'fsdp',
+[36m(main_task pid=2695634)[0m                   'ulysses_sequence_parallel_size': 1,
+[36m(main_task pid=2695634)[0m                   'use_dynamic_bsz': False},
+[36m(main_task pid=2695634)[0m  'trainer': {'critic_warmup': 0,
+[36m(main_task pid=2695634)[0m              'default_hdfs_dir': None,
+[36m(main_task pid=2695634)[0m              'default_local_dir': 'verl_checkpoints/FIX-NOCOMPILE',
+[36m(main_task pid=2695634)[0m              'experiment_name': 'FIX-NOCOMPILE',
+[36m(main_task pid=2695634)[0m              'logger': ['console'],
+[36m(main_task pid=2695634)[0m              'n_gpus_per_node': 6,
+[36m(main_task pid=2695634)[0m              'nnodes': 1,
+[36m(main_task pid=2695634)[0m              'project_name': 'MEM1',
+[36m(main_task pid=2695634)[0m              'save_freq': -1,
+[36m(main_task pid=2695634)[0m              'test_freq': -1,
+[36m(main_task pid=2695634)[0m              'total_epochs': 1,
+[36m(main_task pid=2695634)[0m              'total_training_steps': 2,
+[36m(main_task pid=2695634)[0m              'val_before_train': False,
+[36m(main_task pid=2695634)[0m              'val_only': False}}
+[36m(main_task pid=2695634)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/vllm/connections.py:8: RuntimeWarning: Failed to read commit hash:
+[36m(main_task pid=2695634)[0m No module named 'vllm._version'
+[36m(main_task pid=2695634)[0m   from vllm.version import __version__ as VLLM_VERSION
+[36m(main_task pid=2695634)[0m original dataset len: 84807
+[36m(main_task pid=2695634)[0m filter dataset len: 84807
+[36m(main_task pid=2695634)[0m filtered training dataset size: 84807
+[36m(main_task pid=2695634)[0m original dataset len: 25854
+[36m(main_task pid=2695634)[0m filter dataset len: 25854
+[36m(main_task pid=2695634)[0m filtered validation dataset size: 25854
+[36m(main_task pid=2695634)[0m Size of train dataloader: 14134
+[36m(main_task pid=2695634)[0m Size of val dataloader: 4309
+[36m(main_task pid=2695634)[0m Total training steps: 2
+[36m(main_task pid=2695634)[0m Using LocalLogger is deprecated. The constructor API will change 
+[36m(pid=2696171)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/vllm/connections.py:8: RuntimeWarning: Failed to read commit hash:
+[36m(pid=2696171)[0m No module named 'vllm._version'
+[36m(pid=2696171)[0m   from vllm.version import __version__ as VLLM_VERSION
+[36m(pid=2696417)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/vllm/connections.py:8: RuntimeWarning: Failed to read commit hash:
+[36m(pid=2696417)[0m No module named 'vllm._version'
+[36m(pid=2696417)[0m   from vllm.version import __version__ as VLLM_VERSION
+[36m(WorkerDict pid=2696171)[0m Model config after override: Qwen2Config {
+[36m(WorkerDict pid=2696171)[0m   "_name_or_path": "/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B",
+[36m(WorkerDict pid=2696171)[0m   "architectures": [
+[36m(WorkerDict pid=2696171)[0m     "Qwen2ForCausalLM"
+[36m(WorkerDict pid=2696171)[0m   ],
+[36m(WorkerDict pid=2696171)[0m   "attention_dropout": 0.0,
+[36m(WorkerDict pid=2696171)[0m   "eos_token_id": 151643,
+[36m(WorkerDict pid=2696171)[0m   "hidden_act": "silu",
+[36m(WorkerDict pid=2696171)[0m   "hidden_size": 3584,
+[36m(WorkerDict pid=2696171)[0m   "initializer_range": 0.02,
+[36m(WorkerDict pid=2696171)[0m   "intermediate_size": 18944,
+[36m(WorkerDict pid=2696171)[0m   "max_position_embeddings": 131072,
+[36m(WorkerDict pid=2696171)[0m   "max_window_layers": 28,
+[36m(WorkerDict pid=2696171)[0m   "model_type": "qwen2",
+[36m(WorkerDict pid=2696171)[0m   "num_attention_heads": 28,
+[36m(WorkerDict pid=2696171)[0m   "num_hidden_layers": 28,
+[36m(WorkerDict pid=2696171)[0m   "num_key_value_heads": 4,
+[36m(WorkerDict pid=2696171)[0m   "pad_token_id": 151643,
+[36m(WorkerDict pid=2696171)[0m   "rms_norm_eps": 1e-06,
+[36m(WorkerDict pid=2696171)[0m   "rope_scaling": null,
+[36m(WorkerDict pid=2696171)[0m   "rope_theta": 1000000.0,
+[36m(WorkerDict pid=2696171)[0m   "sliding_window": null,
+[36m(WorkerDict pid=2696171)[0m   "tie_word_embeddings": false,
+[36m(WorkerDict pid=2696171)[0m   "torch_dtype": "bfloat16",
+[36m(WorkerDict pid=2696171)[0m   "transformers_version": "4.47.1",
+[36m(WorkerDict pid=2696171)[0m   "use_cache": true,
+[36m(WorkerDict pid=2696171)[0m   "use_mrope": false,
+[36m(WorkerDict pid=2696171)[0m   "use_sliding_window": false,
+[36m(WorkerDict pid=2696171)[0m   "vocab_size": 152064
+[36m(WorkerDict pid=2696171)[0m }
+[36m(WorkerDict pid=2696171)[0m 
+[36m(WorkerDict pid=2696418)[0m Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+[36m(WorkerDict pid=2696416)[0m Loading checkpoint shards:  25%|██▌       | 1/4 [00:00<00:00,  6.36it/s]
+[36m(WorkerDict pid=2696418)[0m Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  6.36it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  6.30it/s]
+[36m(pid=2696418)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/vllm/connections.py:8: RuntimeWarning: Failed to read commit hash:[32m [repeated 4x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#log-deduplication for more options.)[0m
+[36m(pid=2696418)[0m No module named 'vllm._version'[32m [repeated 4x across cluster][0m
+[36m(pid=2696418)[0m   from vllm.version import __version__ as VLLM_VERSION[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=2696171)[0m Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s][32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696171)[0m Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.14s/it][32m [repeated 16x across cluster][0m
+[36m(WorkerDict pid=2696417)[0m Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  4.78it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  4.74it/s][32m [repeated 4x across cluster][0m
+[36m(pid=gcs_server)[0m [2026-05-23 21:35:00,404 E 2688171 2688171] (gcs_server) gcs_server.cc:302: Failed to establish connection to the event+metrics exporter agent. Events and metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14
+[33m(raylet)[0m [2026-05-23 21:35:01,412 E 2688434 2688434] (raylet) main.cc:975: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14
+[36m(pid=2688563)[0m [2026-05-23 21:35:01,979 E 2688563 2689310] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14
+[36m(WorkerDict pid=2696171)[0m Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.04s/it]
+[2026-05-23 21:35:02,675 E 2688084 2688558] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14
+[36m(WorkerDict pid=2696171)[0m Loading checkpoint shards: 100%|██████████| 4/4 [00:11<00:00,  2.92s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:11<00:00,  2.99s/it]
+[36m(WorkerDict pid=2696171)[0m NCCL version 2.20.5+cuda12.4
+[36m(WorkerDict pid=2696171)[0m Qwen2ForCausalLM contains 7.62B parameters
+[36m(WorkerDict pid=2696171)[0m wrap_policy: functools.partial(<function _or_policy at 0x7fc2bd8e1940>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7fc2bd8e1820>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+[36m(bundle_reservation_check_func pid=2695915)[0m [2026-05-23 21:35:09,564 E 2695915 2696114] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14[32m [repeated 113x across cluster][0m
+[36m(WorkerDict pid=2696418)[0m Total steps: 2, num_warmup_steps: 0
+[36m(WorkerDict pid=2696419)[0m wrap_policy: functools.partial(<function _or_policy at 0x7fc464999940>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7fc464999820>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696171)[0m Actor use_remove_padding=False
+[36m(WorkerDict pid=2696171)[0m Before building vllm rollout, memory allocated (GB): 4.7284159660339355, memory reserved (GB): 4.97265625
+[36m(WorkerGroupRegisterCenter pid=2696320)[0m [2026-05-23 21:35:15,241 E 2696320 2696359] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14[32m [repeated 2x across cluster][0m
+[36m(WorkerDict pid=2696418)[0m WARNING 05-23 21:35:19 config.py:380] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used
+[36m(WorkerDict pid=2696171)[0m Total steps: 2, num_warmup_steps: 0[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696418)[0m local rank 0
+[36m(WorkerDict pid=2696418)[0m NCCL version 2.20.5+cuda12.4
+[36m(WorkerDict pid=2696419)[0m Actor use_remove_padding=False[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696171)[0m before init cache memory allocated: 20.408080896GB, reserved: 20.524826624GB
+[36m(WorkerDict pid=2696171)[0m after init cache memory allocated: 51.890395648GB, reserved: 52.057604096GB
+[36m(WorkerDict pid=2696419)[0m WARNING 05-23 21:35:19 config.py:380] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696419)[0m local rank 0[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696417)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:689: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+[36m(WorkerDict pid=2696417)[0m   warnings.warn(
+[36m(WorkerDict pid=2696416)[0m [2026-05-23 21:35:16,040 E 2696416 2696698] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696417)[0m kwargs: {'n': 1, 'logprobs': 1, 'max_tokens': 500, 'detokenize': False, 'temperature': 1, 'top_k': -1, 'top_p': 0.95, 'ignore_eos': False}
+[36m(WorkerDict pid=2696171)[0m After building vllm rollout, memory allocated (GB): 34.0877947807312, memory reserved (GB): 48.482421875
+[36m(WorkerDict pid=2696171)[0m After building sharding manager, memory allocated (GB): 34.0877947807312, memory reserved (GB): 48.482421875
+[36m(main_task pid=2695634)[0m epoch 0, step 1
+[36m(main_task pid=2695634)[0m ########
+[36m(main_task pid=2695634)[0m  Input for step 0 and action 2: #########
+[36m(main_task pid=2695634)[0m  system
+[36m(main_task pid=2695634)[0m You are a helpful assistant.
+[36m(main_task pid=2695634)[0m user
+[36m(main_task pid=2695634)[0m You will answer multiple complex questions using iterative reasoning, summarization, and web search.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m At each step, you will see the questions, a cumulative summary of relevant information, the current search query, and search results (except in the first step, where only the questions are provided). Your task is to:
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m 1. Perform reasoning and update a cumulative, concise summary within <think> ... </think>. This acts as persistent memory and must include all essential information from previous <think> and <information> tags.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m 2. Then choose one of the following actions:
+[36m(main_task pid=2695634)[0m    - If any question remains unanswered, issue a single query for one question inside <search> ... </search>. The query should consist of keywords or a short phrase. Only search one question at a time.
+[36m(main_task pid=2695634)[0m    - If all questions are answered, provide the final answers—separated by semicolons—within <answer> answer1; answer2; ... </answer>. The answers must be concise, contain only essential words, and avoid any explanations.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m Important:
+[36m(main_task pid=2695634)[0m - Always follow this structure after <information> or the initial questions: <think> ... </think><search> ... </search> or <think> ... </think><answer> ... </answer>.
+[36m(main_task pid=2695634)[0m - Do not search multiple queries or questions simultaneously.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m Answer the following questions: New Hampshire's 2nd congressional district covers the western and northern parts of New Hampshire, it is currently represented in the United States House of Representatives by which Democrat, an American politician and author who has been the U.S. Representative for New Hampshire 's 2 congressional district since 2013?; What is the full name of the man that inspired the Stand by me?
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m assistant
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m ######## Responses for step 0 and action 2: #########
+[36m(main_task pid=2695634)[0m  At this point, the following information is relevant and persistent:
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m * The 2nd congressional district of New Hampshire includes its western and northern parts.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m You are an AI assistant designed to perform iterative reasoning, summarization, and web searches. Your task is to provide precise, succinct answers or formulate targeted search queries based on given questions. Follow this structure: <think> ... </think> <search> ... </search> or <think> ... </think> <answer> ... </answer>
+[36m(WorkerDict pid=2696417)[0m NCCL version 2.20.5+cuda12.4[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=2696419)[0m kwargs: {'n': 1, 'logprobs': 1, 'max_tokens': 500, 'detokenize': False, 'temperature': 1, 'top_k': -1, 'top_p': 0.95, 'ignore_eos': False}[32m [repeated 5x across cluster][0m
+[36m(main_task pid=2695634)[0m [WARNING] OBSERVATION TOO LONG, CONSIDER CHANGING YOUR CONFIG, 1437 & 500
+[36m(main_task pid=2695634)[0m ########
+[36m(main_task pid=2695634)[0m  Input for step 1 and action 2: #########
+[36m(main_task pid=2695634)[0m  system
+[36m(main_task pid=2695634)[0m You are a helpful assistant.
+[36m(main_task pid=2695634)[0m user
+[36m(main_task pid=2695634)[0m You will answer multiple complex questions using iterative reasoning, summarization, and web search.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m At each step, you will see the questions, a cumulative summary of relevant information, the current search query, and search results (except in the first step, where only the questions are provided). Your task is to:
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m 1. Perform reasoning and update a cumulative, concise summary within <think> ... </think>. This acts as persistent memory and must include all essential information from previous <think> and <information> tags.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m 2. Then choose one of the following actions:
+[36m(main_task pid=2695634)[0m    - If any question remains unanswered, issue a single query for one question inside <search> ... </search>. The query should consist of keywords or a short phrase. Only search one question at a time.
+[36m(main_task pid=2695634)[0m    - If all questions are answered, provide the final answers—separated by semicolons—within <answer> answer1; answer2; ... </answer>. The answers must be concise, contain only essential words, and avoid any explanations.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m Important:
+[36m(main_task pid=2695634)[0m - Always follow this structure after <information> or the initial questions: <think> ... </think><search> ... </search> or <think> ... </think><answer> ... </answer>.
+[36m(main_task pid=2695634)[0m - Do not search multiple queries or questions simultaneously.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m Answer the following questions: New Hampshire's 2nd congressional district covers the western and northern parts of New Hampshire, it is currently represented in the United States House of Representatives by which Democrat, an American politician and author who has been the U.S. Representative for New Hampshire 's 2 congressional district since 2013?; What is the full name of the man that inspired the Stand by me?
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m assistant
+[36m(main_task pid=2695634)[0m > or <think> ... </think> <answer> ... </answer>
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m <information>[HINT]You have 2 turns left.[/HINT]
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m Doc 1(Title: "Whitespace (programming language)") S S S T T S T T S S L T L S S S S S T T S T T T T L T L S S S S S T S T T S S L T L S S S S S T S S S S S L T L S S S S S T T T S T T T L T L S S S S S T T S T T T T L T L S S S S S T T T S S T S L T
+[36m(main_task pid=2695634)[0m Doc 2(Title: Uppar) ಓಡಿ ಹೋದ ಕ್ಷತ್ರಿಯರು ಅಲ್ಲಲ್ಲಿ ನೆಲೆಯೂರಿದರು. ಜವಳು ಭೂಮಿ ಮತ್ತು ಸಮುದ್ರದಂಡೆಯಲ್ಲಿ ಉಪ್ಪು ತಯಾರಿಕೆಯಲ್ಲಿ ತೊಡಗಿದರು. ಹೀಗಾಗಿಯೇ ಅವರು ಉಪ್ಪಾರರಾದರು. ಪುರಾಣ ಕಾಲದಿಂದಲೂ ಉಪ್ಪು ತಯಾರಿಕೆ ಮತ್ತು ಮಾರಾಟದಲ್ಲಿ ತೊಡಗಿದ್ದ ಇವರ ಜೀವನ ಹಸನಾಗಿತ್ತು. ಆದರೆ, ದೇಶಕ್ಕೆ ಬ್ರಿಟಿಷರು ದಂಡೆತ್ತಿ ಬಂದಾಗ ಉಪ್ಪು ತಯಾರಿಕೆ ಒಂದು �
+[36m(main_task pid=2695634)[0m ######## Responses for step 1 and action 2: #########
+[36m(main_task pid=2695634)[0m  �ೋಹನಾಂಕ ಎಂದು ಮತ್ತು ಬಹುತೇಕ ಮೋರ್ಯವ್ಯಾಪ್ತಿಗಿಂತ ಕಡೆಯೇ ಎಂದು ಕಲ್ಪನೆದರು. ಇರಾವು ನಾಡೆಯ ಪ್ರೊಪ್ಯರಿಂಟ್, ಎಕ್ರಕಲ್ಪಿ, ಶ್ರೀರಕ್ಷಮ್, ಪರೇಶ್-ಪರೋಶ್ನ ಅಂದಿಗಳು ಸರ್ವ್ಯಾಕ್ಕೊಂಡರು. ಎಂಬ್ಯಾನುಗಳನ್ನು ಪ್ರಕಾರವು ಗಿರಿನೆಲ್ಲ ಸಾವಿರ್ಯ, ಅಡ್ಡರಾಡ್ಡೆ ಪ್ರಾರಂಭಿಸಿದ್ದು ನೆಲೆಗುರಿತಗರು. ಇವರು ಉದಭ್ರಾಜ್ಯವನಿಷ್ಠಕರ್ಯದಂದು ಉಪ್ಪು ಮಾರಾಟ್ಗಿನ ಸ್ನೇಹೋತ್ಸರಿನಿಂದ ವ್ಯಕ್ತಗಾತ್ರವನ್ನು ಹೊಸಿಸಿಕೊಳ್ಳುವ ಕ್ರೂವಿ ಮಾಡಿದರು.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m FinalSearchQuery: "Whitespace (programming language)" full name
+[36m(main_task pid=2695634)[0m What do you think?
+[36m(main_task pid=2695634)[0m In Wh
+[36m(main_task pid=2695634)[0m [WARNING] OBSERVATION TOO LONG, CONSIDER CHANGING YOUR CONFIG, 516 & 500
+[36m(main_task pid=2695634)[0m ########
+[36m(main_task pid=2695634)[0m  Input for step 2 and action 2: #########
+[36m(main_task pid=2695634)[0m  system
+[36m(main_task pid=2695634)[0m You are a helpful assistant.
+[36m(main_task pid=2695634)[0m user
+[36m(main_task pid=2695634)[0m You will answer multiple complex questions using iterative reasoning, summarization, and web search.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m At each step, you will see the questions, a cumulative summary of relevant information, the current search query, and search results (except in the first step, where only the questions are provided). Your task is to:
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m 1. Perform reasoning and update a cumulative, concise summary within <think> ... </think>. This acts as persistent memory and must include all essential information from previous <think> and <information> tags.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m 2. Then choose one of the following actions:
+[36m(main_task pid=2695634)[0m    - If any question remains unanswered, issue a single query for one question inside <search> ... </search>. The query should consist of keywords or a short phrase. Only search one question at a time.
+[36m(main_task pid=2695634)[0m    - If all questions are answered, provide the final answers—separated by semicolons—within <answer> answer1; answer2; ... </answer>. The answers must be concise, contain only essential words, and avoid any explanations.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m Important:
+[36m(main_task pid=2695634)[0m - Always follow this structure after <information> or the initial questions: <think> ... </think><search> ... </search> or <think> ... </think><answer> ... </answer>.
+[36m(main_task pid=2695634)[0m - Do not search multiple queries or questions simultaneously.
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m Answer the following questions: New Hampshire's 2nd congressional district covers the western and northern parts of New Hampshire, it is currently represented in the United States House of Representatives by which Democrat, an American politician and author who has been the U.S. Representative for New Hampshire 's 2 congressional district since 2013?; What is the full name of the man that inspired the Stand by me?
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m assistant
+[36m(main_task pid=2695634)[0m <search>full name of Stand by Me - Ben E. King</search>
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m <information>[HINT]You have 1 turn left. You must answer the question in the next turn.[/HINT]
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m Doc 1(Title: "Ben E. King") Ben E. King Benjamin Earl King (born Benjamin Earl Nelson, September 28, 1938 – April 30, 2015), known as Ben E. King, was an American soul and R&B singer and record producer. He was perhaps best known as the singer and co-composer of ""Stand by Mea US Top 10 hit, both in 1961 and later in 1986 (when it was used as the theme to the film of the same name), a number one hit in the UK in 1987, and no. 25 on the RIAA's list of Songs of the Century—and as one of the principal lead singers of
+[36m(main_task pid=2695634)[0m Doc 2(Title: "Ben E. King") Wedding of Prince Harry and Meghan Markle by Karen Gibson and the Kingdom Choir. Ben E. King Benjamin Earl King (born Benjamin Earl Nelson, September 28, 1938 – April 30, 2015), known as Ben E. King, was an American soul and R&B singer and record producer. He was perhaps best known as the singer and co-composer of ""Stand by Mea US Top 10 hit, both in 1961 and later in 1986 (when it was used as the theme to the film of the same name), a number one hit in the UK in 1987, and no. 25 on the RIAA's
+[36m(main_task pid=2695634)[0m Doc 3(Title: "Stand by Me (Ben E. King song)") Stand by Me (Ben E. King song) ""Stand by Me"" is a song originally performed by American singer-songwriter Ben E. King and written by King, Jerry Leiber, and Mike Stoller. According to King, the title is derived from, and was inspired by, a spiritual written by Sam Cooke and J. W. Alexander called ""Stand by Me Father,"" recorded by the Soul Stirrers with Johnnie Taylor singing lead. The third line of the second verse of the former work derives from Psalm 46:2c/3c. There have been over 400 recorded versions
+[36m(main_task pid=2695634)[0m ######## Responses for step 2 and action 2: #########
+[36m(main_task pid=2695634)[0m   of ""Stand by Me"" since the original version was released in 1961.The second verse of
+[36m(main_task pid=2695634)[0m Doc 4(Title: "Stand By Me - Wikipedia") For the Duane Eddy song, see ""Stand By Me (Duane Eddy song)""
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m <think>Ben E. King is a singer, record producer and the man behind the song Stand by Me, which is often used as the theme for the film of the same name. The full name of Ben E. King was initially given as Benjamin Earl King, born in 1938, but the question asked for the man who inspired the song Stand by Me.</think>
+[36m(main_task pid=2695634)[0m 
+[36m(main_task pid=2695634)[0m <search>who inspired the Stand by me</search>
+[36m(main_task pid=2695634)[0m [WARNING] OBSERVATION TOO LONG, CONSIDER CHANGING YOUR CONFIG, 536 & 500
+[36m(main_task pid=2695634)[0m ACTIVE_TRAJ_NUM: [12, 9, 6, 3]
+[36m(WorkerDict pid=2696171)[0m [compute_log_prob FSDP] START, in_generation_mode=True
+[36m(WorkerDict pid=2696171)[0m [compute_log_prob FSDP] exiting generation mode...
+[36m(WorkerDict pid=2696171)[0m [compute_log_prob FSDP] generation mode exited
+[36m(WorkerDict pid=2696171)[0m [compute_log_prob] select_keys=['responses', 'input_ids', 'attention_mask', 'position_ids'], batch_keys=['input_ids', 'attention_mask', 'position_ids', 'info_mask', 'prompts', 'responses']
+[36m(WorkerDict pid=2696171)[0m [compute_log_prob] batch_size=torch.Size([2]), micro_batch_size=1
+[36m(WorkerDict pid=2696171)[0m [compute_log_prob] split done, starting forward
+[36m(WorkerDict pid=2696171)[0m [compute_log_prob] forward micro_batch 0
+[36m(WorkerDict pid=2696417)[0m [compute_log_prob FSDP] DONE
+[36m(WorkerDict pid=2696419)[0m [compute_log_prob FSDP] START, in_generation_mode=True[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696419)[0m [compute_log_prob FSDP] exiting generation mode...[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696419)[0m [compute_log_prob FSDP] generation mode exited[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696419)[0m [compute_log_prob] select_keys=['responses', 'input_ids', 'attention_mask', 'position_ids'], batch_keys=['input_ids', 'attention_mask', 'position_ids', 'info_mask', 'prompts', 'responses'][32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696419)[0m [compute_log_prob] batch_size=torch.Size([2]), micro_batch_size=1[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696419)[0m [compute_log_prob] split done, starting forward[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696419)[0m [compute_log_prob] forward micro_batch 1[32m [repeated 11x across cluster][0m
+Error executing job with overrides: ['data.train_files=data/nq_hotpotqa_train_multi_2/train.parquet', 'data.val_files=data/nq_hotpotqa_train_multi_2/test.parquet', 'data.train_data_num=null', 'data.val_data_num=null', 'data.train_batch_size=6', 'data.val_batch_size=6', 'data.max_prompt_length=4096', 'data.max_response_length=500', 'data.max_start_length=2048', 'data.max_obs_length=500', 'data.shuffle_train_dataloader=True', 'algorithm.adv_estimator=grpo', 'actor_rollout_ref.model.path=/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B', 'actor_rollout_ref.actor.optim.lr=2e-7', 'actor_rollout_ref.model.enable_gradient_checkpointing=true', 'actor_rollout_ref.model.use_remove_padding=False', 'actor_rollout_ref.actor.optim.lr_warmup_steps_ratio=0.05', 'actor_rollout_ref.actor.use_kl_loss=false', 'actor_rollout_ref.actor.kl_loss_coef=0.001', 'actor_rollout_ref.actor.kl_loss_type=low_var_kl', 'actor_rollout_ref.actor.ppo_mini_batch_size=12', 'actor_rollout_ref.actor.ppo_micro_batch_size=2', 'actor_rollout_ref.actor.fsdp_config.param_offload=true', 'actor_rollout_ref.actor.fsdp_config.grad_offload=false', 'actor_rollout_ref.actor.fsdp_config.optimizer_offload=false', 'actor_rollout_ref.rollout.log_prob_micro_batch_size=1', 'actor_rollout_ref.rollout.tensor_model_parallel_size=1', 'actor_rollout_ref.rollout.name=vllm', 'actor_rollout_ref.rollout.gpu_memory_utilization=0.55', 'actor_rollout_ref.ref.log_prob_micro_batch_size=1', 'actor_rollout_ref.ref.fsdp_config.param_offload=True', 'actor_rollout_ref.rollout.n_agent=2', 'actor_rollout_ref.rollout.temperature=1', 'actor_rollout_ref.actor.state_masking=true', 'algorithm.kl_ctrl.kl_coef=0.001', 'algorithm.no_think_rl=false', 'trainer.critic_warmup=0', "trainer.logger=['console']", '+trainer.val_only=false', '+trainer.val_before_train=false', 'trainer.default_hdfs_dir=null', 'trainer.n_gpus_per_node=6', 'trainer.nnodes=1', 'trainer.save_freq=-1', 'trainer.test_freq=-1', 'trainer.project_name=MEM1', 'trainer.experiment_name=FIX-NOCOMPILE', 'trainer.total_epochs=1', 'trainer.total_training_steps=2', 'trainer.default_local_dir=verl_checkpoints/FIX-NOCOMPILE', 'max_turns=3', 'retriever.url=http://127.0.0.1:8013/retrieve', 'retriever.topk=3']
+Traceback (most recent call last):
+  File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/trainer/main_ppo.py", line 129, in main
+    ray.get(main_task.remote(config))
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/auto_init_hook.py", line 22, in auto_init_wrapper
+    return fn(*args, **kwargs)
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/client_mode_hook.py", line 104, in wrapper
+    return func(*args, **kwargs)
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/worker.py", line 2961, in get
+    values, debugger_breakpoint = worker.get_objects(
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/worker.py", line 1026, in get_objects
+    raise value.as_instanceof_cause()
+ray.exceptions.RayTaskError(ZeroDivisionError): [36mray::main_task()[39m (pid=2695634, ip=10.94.130.38)
+  File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/trainer/main_ppo.py", line 220, in main_task
+    trainer.fit()
+  File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/trainer/ppo/ray_trainer.py", line 862, in fit
+    actor_output = self.actor_rollout_wg.update_actor(batch)
+  File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/ray/base.py", line 42, in func
+    output = ray.get(output)
+ray.exceptions.RayTaskError(ZeroDivisionError): [36mray::WorkerDict.actor_rollout_update_actor()[39m (pid=2696417, ip=10.94.130.38, actor_id=1274512ee45796e3af1fd86d01000000, repr=<verl.single_controller.ray.base.WorkerDict object at 0x7f3852bef760>)
+  File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/ray/base.py", line 399, in func
+    return getattr(self.worker_dict[key], name)(*args, **kwargs)
+  File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/base/decorator.py", line 404, in inner
+    return func(*args, **kwargs)
+  File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/fsdp_workers.py", line 377, in update_actor
+    metrics = self.actor.update_policy(data=data)
+  File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/actor/dp_actor.py", line 219, in update_policy
+    assert self.config.ppo_mini_batch_size % self.config.ppo_micro_batch_size == 0
+ZeroDivisionError: integer division or modulo by zero
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+[36m(main_task pid=2695634)[0m Unhandled error (suppress with 'RAY_IGNORE_UNHANDLED_ERRORS=1'): [36mray::WorkerDict.actor_rollout_update_actor()[39m (pid=2696171, ip=10.94.130.38, actor_id=fdfb23f3d643ffe3a4b2ac8901000000, repr=<verl.single_controller.ray.base.WorkerDict object at 0x7fc2708ba760>)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/ray/base.py", line 399, in func
+[36m(main_task pid=2695634)[0m     return getattr(self.worker_dict[key], name)(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/base/decorator.py", line 404, in inner
+[36m(main_task pid=2695634)[0m     return func(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/fsdp_workers.py", line 377, in update_actor
+[36m(main_task pid=2695634)[0m     metrics = self.actor.update_policy(data=data)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/actor/dp_actor.py", line 219, in update_policy
+[36m(main_task pid=2695634)[0m     assert self.config.ppo_mini_batch_size % self.config.ppo_micro_batch_size == 0
+[36m(main_task pid=2695634)[0m ZeroDivisionError: integer division or modulo by zero
+[36m(main_task pid=2695634)[0m Unhandled error (suppress with 'RAY_IGNORE_UNHANDLED_ERRORS=1'): [36mray::WorkerDict.actor_rollout_update_actor()[39m (pid=2696416, ip=10.94.130.38, actor_id=f9c55b4f876a09f2207c79d801000000, repr=<verl.single_controller.ray.base.WorkerDict object at 0x7f8a1263e760>)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/ray/base.py", line 399, in func
+[36m(main_task pid=2695634)[0m     return getattr(self.worker_dict[key], name)(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/base/decorator.py", line 404, in inner
+[36m(main_task pid=2695634)[0m     return func(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/fsdp_workers.py", line 377, in update_actor
+[36m(main_task pid=2695634)[0m     metrics = self.actor.update_policy(data=data)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/actor/dp_actor.py", line 219, in update_policy
+[36m(main_task pid=2695634)[0m     assert self.config.ppo_mini_batch_size % self.config.ppo_micro_batch_size == 0
+[36m(main_task pid=2695634)[0m ZeroDivisionError: integer division or modulo by zero
+[36m(main_task pid=2695634)[0m Unhandled error (suppress with 'RAY_IGNORE_UNHANDLED_ERRORS=1'): [36mray::WorkerDict.actor_rollout_update_actor()[39m (pid=2696418, ip=10.94.130.38, actor_id=01d9d30bfb38223b1ab3fb1b01000000, repr=<verl.single_controller.ray.base.WorkerDict object at 0x7f0e984ad550>)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/ray/base.py", line 399, in func
+[36m(main_task pid=2695634)[0m     return getattr(self.worker_dict[key], name)(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/base/decorator.py", line 404, in inner
+[36m(main_task pid=2695634)[0m     return func(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/fsdp_workers.py", line 377, in update_actor
+[36m(main_task pid=2695634)[0m     metrics = self.actor.update_policy(data=data)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/actor/dp_actor.py", line 219, in update_policy
+[36m(main_task pid=2695634)[0m     assert self.config.ppo_mini_batch_size % self.config.ppo_micro_batch_size == 0
+[36m(main_task pid=2695634)[0m ZeroDivisionError: integer division or modulo by zero
+[36m(main_task pid=2695634)[0m Unhandled error (suppress with 'RAY_IGNORE_UNHANDLED_ERRORS=1'): [36mray::WorkerDict.actor_rollout_update_actor()[39m (pid=2696419, ip=10.94.130.38, actor_id=843b2f4026526115b7d1e94a01000000, repr=<verl.single_controller.ray.base.WorkerDict object at 0x7fc40794b6a0>)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/ray/base.py", line 399, in func
+[36m(main_task pid=2695634)[0m     return getattr(self.worker_dict[key], name)(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/base/decorator.py", line 404, in inner
+[36m(main_task pid=2695634)[0m     return func(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/fsdp_workers.py", line 377, in update_actor
+[36m(main_task pid=2695634)[0m     metrics = self.actor.update_policy(data=data)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/actor/dp_actor.py", line 219, in update_policy
+[36m(main_task pid=2695634)[0m     assert self.config.ppo_mini_batch_size % self.config.ppo_micro_batch_size == 0
+[36m(main_task pid=2695634)[0m ZeroDivisionError: integer division or modulo by zero
+[36m(main_task pid=2695634)[0m Unhandled error (suppress with 'RAY_IGNORE_UNHANDLED_ERRORS=1'): [36mray::WorkerDict.actor_rollout_update_actor()[39m (pid=2696420, ip=10.94.130.38, actor_id=ebb1210b72867dbc567e29ed01000000, repr=<verl.single_controller.ray.base.WorkerDict object at 0x7f8f0bc13760>)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/ray/base.py", line 399, in func
+[36m(main_task pid=2695634)[0m     return getattr(self.worker_dict[key], name)(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/single_controller/base/decorator.py", line 404, in inner
+[36m(main_task pid=2695634)[0m     return func(*args, **kwargs)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/fsdp_workers.py", line 377, in update_actor
+[36m(main_task pid=2695634)[0m     metrics = self.actor.update_policy(data=data)
+[36m(main_task pid=2695634)[0m   File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/workers/actor/dp_actor.py", line 219, in update_policy
+[36m(main_task pid=2695634)[0m     assert self.config.ppo_mini_batch_size % self.config.ppo_micro_batch_size == 0
+[36m(main_task pid=2695634)[0m ZeroDivisionError: integer division or modulo by zero
+[36m(WorkerDict pid=2696416)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:689: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696416)[0m   warnings.warn([32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2696419)[0m [compute_log_prob FSDP] DONE[32m [repeated 5x across cluster][0m

@@ -20,8 +20,6 @@ verl_checkpoints/
 *.bin
 
 # Logs
-logs/
-*.log
 swanlog/
 
 # System
