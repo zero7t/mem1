@@ -1,82 +1,121 @@
-# GRPO 改进版训练系统
+# GRPO Improved - Multi-Turn RAG QA Training System
+
+## 版本
+
+- **V1** (当前运行): 标量过程奖励 + 异步LLM Judge
+- **V2** (新增): Turn-level过程奖励 + Turn-weighted advantage + 生成时LLM Judge
 
 ## 文件结构
 
 ```
 grpo_improved/
-├── README.md                    # 本文档
-├── core/                        # 核心算法（改动的源码）
-│   ├── grpo_algos.py           # GRPO 算法：advantage计算 + policy loss + LLDS
-│   └── actor_update.py         # Actor 策略更新：forward/backward + LLDS集成
-├── reward/                      # 奖励系统
-│   ├── rule_reward.py          # 规则过程奖励（4维，免费）
-│   └── llm_judge.py            # LLM Judge（outcome语义 + listwise排名）
-├── scripts/                     # 训练脚本
-│   └── train.sh                # 启动训练（最新配置）
-└── docs/                        # 设计文档
-    ├── algorithm_design.md     # 算法设计详解
-    └── reward_design.md        # 奖励设计详解
+├── __init__.py
+├── main_ppo_v2.py              # V2 训练入口（自包含，不改verl/）
+├── core/
+│   ├── __init__.py
+│   ├── turn_weighted_advantage.py   # Turn-level advantage 调制
+│   ├── generation_judge.py          # 生成时 LLM Judge（0s额外开销）
+│   ├── actor_update.py              # 参考：LLDS-MA + DAPO (dp_actor.py副本)
+│   └── grpo_algos.py               # 参考：Dr.GRPO + DAPO (core_algos.py副本)
+├── reward/
+│   ├── __init__.py
+│   ├── rule_reward_v2.py           # V2: Per-turn过程奖励 + 利用度信号
+│   ├── rule_reward.py              # V1: 标量过程奖励（4维度）
+│   └── llm_judge.py               # LLM Outcome + Process Judge
+├── scripts/
+│   ├── train_v2.sh                 # V2 训练脚本
+│   └── train.sh                    # V1 训练脚本
+└── docs/
+    ├── v2_design.md               # V2 完整设计文档
+    ├── algorithm_design.md
+    └── reward_design.md
 ```
-
-## 与 verl 框架的关系
-
-verl 框架用 `ppo/` 命名，但我们实际跑的是 **GRPO**（无 critic/value network）。
-
-对应关系：
-
-| 本目录 | verl 框架中的位置 | 说明 |
-|--------|-------------------|------|
-| `core/grpo_algos.py` | `verl/trainer/ppo/core_algos.py` | **实际运行的文件** |
-| `core/actor_update.py` | `verl/workers/actor/dp_actor.py` | **实际运行的文件** |
-| `reward/rule_reward.py` | 待集成到 `verl/trainer/main_ppo.py` | 待启用 |
-| `reward/llm_judge.py` | 待集成到 `verl/trainer/main_ppo.py` | 待启用 |
-| `scripts/train.sh` | 独立启动脚本 | 直接使用 |
-
-> ⚠️ **注意**：`core/` 下的文件是从实际运行位置复制过来的**参考副本**。
-> 真正被训练进程加载的仍然是 `verl/trainer/ppo/core_algos.py` 和 `verl/workers/actor/dp_actor.py`。
-> 修改算法时，改这里做参考，确认后再同步到 verl 目录。
-
-## 当前状态
-
-### ✅ 已启用（正在跑的训练）
-
-| 改进 | 位置 | 效果 |
-|------|------|------|
-| Dr.GRPO | `core/grpo_algos.py` → `compute_grpo_outcome_advantage()` | advantage = reward - mean，不除std |
-| DAPO Dynamic Sampling | `core/grpo_algos.py` → `compute_grpo_outcome_advantage()` | std<ε的group跳过 |
-| DAPO Clip-Higher | `core/grpo_algos.py` → `compute_policy_loss()` | 正advantage用clip=0.28 |
-| LLDS-MA | `core/grpo_algos.py` → `compute_llds_loss()` | 防止好轨迹likelihood塌陷 |
-
-### ⏳ 待启用（下次重启生效）
-
-| 改进 | 位置 | 配置变更 |
-|------|------|---------|
-| n_agent=4 | `scripts/train.sh` | 每prompt生成4条轨迹（原来2条） |
-| warmup=0.02 | `scripts/train.sh` | 28步warmup（原来70步） |
-| Rule Process Reward | `reward/rule_reward.py` | 集成到main_ppo.py |
-| LLM Outcome Judge | `reward/llm_judge.py` | EM=0时语义判断 |
-| LLM Process Judge | `reward/llm_judge.py` | tied group listwise排名 |
 
 ## 快速使用
 
-### 启动训练
+### V2 训练（推荐）
 ```bash
 cd /root/paddlejob/workspace/mem1/MEM1/Mem1/train
-nohup bash grpo_improved/scripts/train.sh > /root/paddlejob/workspace/mem1/MEM1/logs/grpo_improved.log 2>&1 &
+bash grpo_improved/scripts/train_v2.sh
 ```
 
-### 修改算法流程
-```
-1. 在 grpo_improved/core/ 中修改和测试
-2. 确认无误后，复制到 verl/ 对应位置：
-   cp grpo_improved/core/grpo_algos.py verl/trainer/ppo/core_algos.py
-   cp grpo_improved/core/actor_update.py verl/workers/actor/dp_actor.py
-3. 重启训练
+### V1 训练（当前）
+```bash
+bash grpo_improved/scripts/train.sh
 ```
 
-### 集成新奖励
+## V2 核心改进
+
+### 1. Per-Turn 过程奖励 (rule_reward_v2.py)
+
+V1 返回标量，V2 返回每轮分数 `[r_0, r_1, ..., r_T]`：
+
+| 维度 | 权重 | 含义 |
+|------|------|------|
+| Hit | 0.3 | 检索是否命中答案实体 |
+| **Utilization** | **0.4** | 检索是否被后续推理/答案引用（**新增**） |
+| Novelty | 0.2 | 是否带来非冗余信息 |
+| Efficiency | 0.1 | 答对时用更少turn的奖励 |
+
+**Utilization 解决的问题：**
+- Turn 1 不再天然占优（搜到了但没用 → 低分）
+- 散点覆盖 vs 系统覆盖可区分（用了的信息才算分）
+
+### 2. Turn-Weighted Advantage (turn_weighted_advantage.py)
+
+标准GRPO所有token同一个advantage。V2按turn质量调制：
+
 ```
-1. 在 grpo_improved/reward/ 中开发
-2. 修改 verl/trainer/main_ppo.py 的 RewardManager 调用新奖励
-3. 重启训练
+w_t = 1 + 0.3 × sign(A_i) × normalize(turn_score_t)
 ```
+
+效果：
+- 好轨迹中好turn → 放大正梯度
+- 好轨迹中差turn → 减弱正梯度
+- 差轨迹中好turn → **保护**（减轻惩罚）
+- 差轨迹中差turn → 加重惩罚
+
+### 3. 生成时 LLM Judge (generation_judge.py)
+
+轨迹完成时立即发API，不等generation结束：
+- 大多数轨迹Turn 1-2完成（~20s），到generation结束（111s）已返回
+- QPS=20，额外等待时间≈0s
+
+## 与 verl 框架的关系
+
+V2 设计为**最小侵入**：
+
+| 需要改动的verl文件 | 改动内容 | 行数 |
+|---|---|---|
+| `ray_trainer.py` | 在 compute_advantage 后加一行 `apply_turn_weighting_to_batch` | +1行 |
+| `generation_think.py` | 在 dones[i]=True 时调用 `judge.on_trajectory_complete()` | +5行 |
+
+其余所有逻辑都在 `grpo_improved/` 内部。
+
+## 算法栈（V2完整）
+
+```
+Dr.GRPO (mean-only baseline, no std normalization)
+  + DAPO Dynamic Sampling (skip zero-variance groups)
+  + DAPO Clip-Higher (asymmetric clip: 0.2/0.28)
+  + LLDS-MA (protect good-trajectory token likelihood)
+  + Turn-Weighted Advantage (per-turn credit assignment)  ← NEW
+  + Rule Process Reward V2 (utilization signal)           ← NEW
+  + LLM Outcome Judge (semantic EM, generation-time)      ← IMPROVED
+```
+
+## 测试
+
+```bash
+cd /root/paddlejob/workspace/mem1/MEM1/Mem1/train
+
+# 测试 per-turn 过程奖励
+/root/paddlejob/workspace/miniforge3/envs/mem1/bin/python -m grpo_improved.reward.rule_reward_v2
+
+# 测试 turn-weighted advantage
+/root/paddlejob/workspace/miniforge3/envs/mem1/bin/python -m grpo_improved.core.turn_weighted_advantage
+```
+
+## 详细设计文档
+
+→ [docs/v2_design.md](docs/v2_design.md)

@@ -932,9 +932,105 @@ class RayPPOTrainer(object):
                                                   lam=self.config.algorithm.lam,
                                                   num_repeat=self.config.actor_rollout_ref.rollout.n)
 
-                        # === LLM Process Judge: Listwise Ranking === [DISABLED - adds ~160s/step]
-                        # To re-enable: restore from grpo_improved/llm_judge_backup/ray_trainer_with_pjudge.py
-                        # Verified working: step=1, groups=96, upgraded=360 (see logs/train_v1_final.log)
+                        # === LLM Process Judge: Listwise Ranking ===
+                        try:
+                            n_repeat = self.config.actor_rollout_ref.rollout.n
+                            if not hasattr(self, '_process_judge'):
+                                self._process_judge = GRPOJudgeOrchestrator({
+                                    'process_judge_enabled': True,
+                                    'process_judge_only_tied': False,
+                                    'process_reward_scale': 0.3,
+                                    'max_concurrent': 20,
+                                })
+                            if self._process_judge.should_run_process_judge(self.global_steps):
+                                # Use uid to recover group structure (balance_batch shuffles order)
+                                uids = batch.non_tensor_batch['uid']
+                                reward_info = batch.non_tensor_batch.get('reward_model')
+                                scores_flat = batch.batch['token_level_scores'].sum(dim=-1).cpu().tolist()
+
+                                # Debug: print uid info on first step
+                                if self.global_steps <= 1:
+                                    print(f"[ProcessJudge] DEBUG: uids type={type(uids)}, len={len(uids)}, "
+                                          f"first5={[str(u) for u in uids[:5]]}, unique={len(set(str(u) for u in uids))}")
+
+                                # Group indices by uid
+                                from collections import OrderedDict
+                                uid_to_indices = OrderedDict()
+                                for i, uid in enumerate(uids):
+                                    uid_key = str(uid)
+                                    if uid_key not in uid_to_indices:
+                                        uid_to_indices[uid_key] = []
+                                    uid_to_indices[uid_key].append(i)
+
+                                questions_for_judge = []
+                                gts_for_judge = []
+                                traj_groups = []
+                                score_groups = []
+                                group_idx_map = []  # maps judge group -> list of batch indices
+
+                                for uid_key, indices in uid_to_indices.items():
+                                    if len(indices) < 2:
+                                        continue  # skip singleton groups
+                                    group_idx_map.append(indices)
+
+                                    # Get ground truth from first member
+                                    first_idx = indices[0]
+                                    gt = reward_info[first_idx].get('ground_truth', {}) if reward_info is not None else {}
+                                    target = gt.get('target', [])
+                                    gt_strs = []
+                                    for item in target:
+                                        if isinstance(item, str):
+                                            gt_strs.append(item)
+                                        elif hasattr(item, '__iter__'):
+                                            gt_strs.append(str(list(item)[0]) if len(item) > 0 else "")
+                                    gts_for_judge.append(gt_strs)
+
+                                    # Decode trajectories
+                                    trajs = []
+                                    for i in indices:
+                                        input_ids = batch.batch['input_ids'][i]
+                                        resp_ids = batch.batch['responses'][i]
+                                        text = self.tokenizer.decode(
+                                            torch.cat([input_ids, resp_ids]),
+                                            skip_special_tokens=True
+                                        )
+                                        trajs.append(text[:3000])
+                                    traj_groups.append(trajs)
+
+                                    # Extract question
+                                    import re as _re
+                                    q_match = _re.search(r'<question>(.*?)</question>', trajs[0], _re.DOTALL)
+                                    questions_for_judge.append(q_match.group(1).strip() if q_match else "")
+
+                                    score_groups.append([scores_flat[i] for i in indices])
+
+                                if questions_for_judge:
+                                    # Call process judge (async batch API)
+                                    process_advantages = self._process_judge.judge_process_listwise(
+                                        questions=questions_for_judge,
+                                        ground_truths=gts_for_judge,
+                                        trajectory_groups=traj_groups,
+                                        outcome_scores=score_groups,
+                                    )
+
+                                    # Apply process advantages to batch advantages
+                                    advantages = batch.batch['advantages']
+                                    n_upgraded = 0
+                                    response_length = batch.batch['responses'].size(-1)
+                                    response_mask = batch.batch['attention_mask'][:, -response_length:]
+                                    for g, indices in enumerate(group_idx_map):
+                                        for j, idx in enumerate(indices):
+                                            if j < len(process_advantages[g]) and process_advantages[g][j] != 0.0:
+                                                advantages[idx] += process_advantages[g][j] * response_mask[idx]
+                                                n_upgraded += 1
+                                    batch.batch['advantages'] = advantages
+                                    metrics['judge/process_judge_groups'] = float(len(group_idx_map))
+                                    metrics['judge/process_judge_upgraded'] = float(n_upgraded)
+                                    print(f"[ProcessJudge] step={self.global_steps}, groups={len(group_idx_map)}, upgraded={n_upgraded}")
+                        except Exception as e:
+                            import traceback as _tb
+                            tb_str = _tb.format_exc().replace('\n', ' | ')
+                            print(f"[ProcessJudge] ERROR: {e} || TB: {tb_str}")
 
                     # update critic
                     if self.use_critic:

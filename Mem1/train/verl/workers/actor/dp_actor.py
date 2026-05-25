@@ -209,6 +209,11 @@ class DataParallelPPOActor(BasePPOActor):
             revert_indices = torch.tensor(get_reverse_idx(indices), dtype=torch.long)
             log_probs = log_probs[revert_indices]
 
+        # Log peak GPU memory during compute_log_prob
+        if torch.cuda.is_available():
+            peak_mem_gb = torch.cuda.max_memory_allocated() / (1024**3)
+            print(f"[GPU_MEM compute_log_prob] peak={peak_mem_gb:.2f}GB")
+
         return log_probs
 
     def update_policy(self, data: DataProto):
@@ -327,4 +332,19 @@ class DataParallelPPOActor(BasePPOActor):
             data = {'actor/grad_norm': grad_norm.detach().item()}
             append_to_dict(metrics, data)
         self.actor_optimizer.zero_grad()
+
+        # Log peak GPU memory
+        import torch
+        if torch.cuda.is_available():
+            peak_mem_gb = torch.cuda.max_memory_allocated() / (1024**3)
+            current_mem_gb = torch.cuda.memory_allocated() / (1024**3)
+            reserved_mem_gb = torch.cuda.memory_reserved() / (1024**3)
+            append_to_dict(metrics, {
+                'actor/peak_memory_gb': peak_mem_gb,
+                'actor/current_memory_gb': current_mem_gb,
+                'actor/reserved_memory_gb': reserved_mem_gb,
+            })
+            print(f"[GPU_MEM] peak={peak_mem_gb:.2f}GB, current={current_mem_gb:.2f}GB, reserved={reserved_mem_gb:.2f}GB")
+            torch.cuda.reset_peak_memory_stats()
+
         return metrics

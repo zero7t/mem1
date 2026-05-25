@@ -13,7 +13,6 @@ export VLLM_ATTENTION_BACKEND=FLASH_ATTN
 export RAY_TMPDIR=/tmp/ray-mem1-smoke
 export RAY_memory_usage_threshold=0.9
 export PYTHONUNBUFFERED=1
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # IMPORTANT: Unset proxy for LLM Judge API (internal network)
 unset http_proxy
@@ -52,7 +51,7 @@ exec python -m verl.trainer.main_ppo \
   actor_rollout_ref.rollout.log_prob_micro_batch_size=12 \
   actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
   actor_rollout_ref.rollout.name=vllm \
-  actor_rollout_ref.rollout.gpu_memory_utilization=0.45 \
+  actor_rollout_ref.rollout.gpu_memory_utilization=0.75 \
   actor_rollout_ref.ref.log_prob_micro_batch_size=12 \
   actor_rollout_ref.ref.fsdp_config.param_offload=True \
   actor_rollout_ref.rollout.n_agent=4 \

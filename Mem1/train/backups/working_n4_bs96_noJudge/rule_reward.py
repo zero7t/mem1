@@ -324,28 +324,7 @@ class StepRewardComputer:
         """
         # Parse trajectory into steps
         steps = extract_trajectory_steps(trajectory_text)
-        raw_targets = ground_truth.get('target', [])
-
-        # Flatten nested numpy arrays / lists into List[str]
-        # Data format: target = array([array(['ans1']), array(['ans2'])])
-        answer_targets = []
-        try:
-            for item in raw_targets:
-                if isinstance(item, str):
-                    answer_targets.append(item)
-                elif hasattr(item, '__iter__'):
-                    # numpy array or list of alternatives — take first
-                    for sub in item:
-                        if isinstance(sub, str):
-                            answer_targets.append(sub)
-                            break
-                        elif hasattr(sub, '__iter__'):
-                            answer_targets.append(str(sub[0]) if len(sub) > 0 else "")
-                            break
-                else:
-                    answer_targets.append(str(item))
-        except Exception:
-            answer_targets = [str(x) for x in raw_targets] if raw_targets is not None else []
+        answer_targets = ground_truth.get('target', [])
 
         if not answer_targets:
             return 0.0

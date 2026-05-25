@@ -1,27 +1,31 @@
 #!/bin/bash
-# Full improved training script:
-#   - DAPO-lite + Dr.GRPO + LLDS-MA (algorithm)
-#   - Rule Process Reward (4 dimensions)
-#   - LLM Outcome Judge (semantic EM)
-#   - LLM Process Judge (listwise ranking, all groups)
-#   - n_agent=4, warmup=0.02
+# V2 Training Script: Turn-Level Process Reward + Turn-Weighted Advantage
+#
+# Improvements over V1:
+#   - Per-turn process reward with utilization signal
+#   - Turn-weighted advantage (good turns amplified, bad turns dampened)
+#   - LLM Outcome Judge (async, overlapped with compute_log_prob)
+#   - DAPO-lite + Dr.GRPO + LLDS-MA (unchanged)
+#
+# Usage:
+#   bash grpo_improved/scripts/train_v2.sh
 
 cd /root/paddlejob/workspace/mem1/MEM1/Mem1/train
 export PATH=/root/paddlejob/workspace/miniforge3/envs/mem1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
 export VLLM_ATTENTION_BACKEND=FLASH_ATTN
-export RAY_TMPDIR=/tmp/ray-mem1-smoke
+export RAY_TMPDIR=/tmp/ray-mem1-v2
 export RAY_memory_usage_threshold=0.9
 export PYTHONUNBUFFERED=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-# IMPORTANT: Unset proxy for LLM Judge API (internal network)
+# Internal API - no proxy
 unset http_proxy
 unset https_proxy
 unset HTTP_PROXY
 unset HTTPS_PROXY
 
-exec python -m verl.trainer.main_ppo \
+exec python -m grpo_improved.main_ppo_v2 \
   data.train_files=data/nq_hotpotqa_train_multi_2/train.parquet \
   data.val_files=data/nq_hotpotqa_train_multi_2/test.parquet \
   data.train_data_num=null \
@@ -52,7 +56,7 @@ exec python -m verl.trainer.main_ppo \
   actor_rollout_ref.rollout.log_prob_micro_batch_size=12 \
   actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
   actor_rollout_ref.rollout.name=vllm \
-  actor_rollout_ref.rollout.gpu_memory_utilization=0.45 \
+  actor_rollout_ref.rollout.gpu_memory_utilization=0.5 \
   actor_rollout_ref.ref.log_prob_micro_batch_size=12 \
   actor_rollout_ref.ref.fsdp_config.param_offload=True \
   actor_rollout_ref.rollout.n_agent=4 \
@@ -70,10 +74,14 @@ exec python -m verl.trainer.main_ppo \
   trainer.save_freq=100 \
   trainer.test_freq=-1 \
   trainer.project_name=MEM1 \
-  trainer.experiment_name=FULL-n4-bs96-noJudge \
+  trainer.experiment_name=V2-turnweight-n4-bs96 \
   trainer.total_epochs=1 \
   trainer.total_training_steps=883 \
-  trainer.default_local_dir=verl_checkpoints/FULL-n4-bs96-noJudge \
+  trainer.default_local_dir=verl_checkpoints/V2-turnweight-n4-bs96 \
   max_turns=6 \
+  +reward.lambda_process=0.5 \
+  +reward.turn_weight_alpha=0.3 \
+  +reward.turn_weight_clip=1.0 \
+  +reward.turn_weight_enabled=true \
   retriever.url=http://127.0.0.1:8013/retrieve \
   retriever.topk=3

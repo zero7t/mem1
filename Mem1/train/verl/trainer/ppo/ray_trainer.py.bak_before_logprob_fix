@@ -751,49 +751,6 @@ class RayPPOTrainer(object):
 
                         first_input_ids = gen_batch.batch['input_ids'][:, -gen_config.max_start_length:].clone().long()
 
-                        # === Setup Generation-Time LLM Judge ===
-                        # Fire Outcome Judge API calls AS trajectories complete during generation
-                        try:
-                            import sys as _sys
-                            _train_root = '/root/paddlejob/workspace/mem1/MEM1/Mem1/train'
-                            if _train_root not in _sys.path:
-                                _sys.path.insert(0, _train_root)
-                            from grpo_improved.core.generation_judge import GenerationTimeJudge
-                            from verl.utils.reward_score import qa_multiple
-
-                            n_repeat = self.config.actor_rollout_ref.rollout.n
-                            # batch.non_tensor_batch['reward_model'] has ground_truth per repeated sample
-                            reward_info = batch.non_tensor_batch.get('reward_model')
-                            if reward_info is not None:
-                                # Extract ground_truths and questions (pre-repeat batch)
-                                batch_size = len(reward_info)
-                                ground_truths = [reward_info[i].get('ground_truth', '') for i in range(batch_size)]
-                                # Extract questions from input_ids
-                                questions = []
-                                for i in range(batch_size):
-                                    input_text = self.tokenizer.decode(
-                                        gen_batch.batch['input_ids'][i], skip_special_tokens=True
-                                    )
-                                    import re as _re
-                                    q_match = _re.search(r'<question>(.*?)</question>', input_text, _re.DOTALL)
-                                    questions.append(q_match.group(1).strip() if q_match else "")
-
-                                gen_judge = GenerationTimeJudge(
-                                    tokenizer=self.tokenizer,
-                                    ground_truths=ground_truths,
-                                    questions=questions,
-                                    n_repeat=n_repeat,
-                                    max_concurrent=20,
-                                    compute_score_fn=qa_multiple.compute_score_em,
-                                )
-                                generation_manager._gen_judge = gen_judge
-                            else:
-                                generation_manager._gen_judge = None
-                        except Exception as e:
-                            import traceback as _tb
-                            print(f"[GenTimeJudge] Setup failed: {e}\n{_tb.format_exc()}")
-                            generation_manager._gen_judge = None
-
                         with _timer('gen', timing_raw):
                             generation_manager.timing_raw = timing_raw
                             final_gen_batch_output = generation_manager.run_llm_loop(
@@ -801,41 +758,10 @@ class RayPPOTrainer(object):
                                 initial_input_ids=first_input_ids,
                             )
 
-                        # === Collect Generation-Time Judge Results ===
-                        # Store upgraded indices for reward_fn to use
-                        if hasattr(generation_manager, '_gen_judge') and generation_manager._gen_judge is not None:
-                            try:
-                                upgraded_indices = generation_manager._gen_judge.get_upgraded_indices(timeout=10)
-                                self.reward_fn._gen_judge_upgraded = upgraded_indices
-                                # Store gen judge stats for metrics
-                                self.reward_fn._gen_judge_stats = {
-                                    'fired': generation_manager._gen_judge._fire_count,
-                                    'skipped': generation_manager._gen_judge._skip_count,
-                                }
-                            except Exception as e:
-                                print(f"[GenTimeJudge] Collect failed: {e}")
-                                self.reward_fn._gen_judge_upgraded = set()
-                            generation_manager._gen_judge = None
-                        else:
-                            self.reward_fn._gen_judge_upgraded = None
-
                         # final_gen_batch_output.batch.apply(lambda x: x.long(), inplace=True)
                         for key in final_gen_batch_output.batch.keys():
                             if key not in ["attention_mask_4d", "batch_rewards"]:
                                 final_gen_batch_output.batch[key] = final_gen_batch_output.batch[key].long()
-
-                        # === Pre-fire LLM Judge BEFORE compute_log_prob ===
-                        # Skip if generation-time judge already handled it
-                        # Note: check for None specifically (not empty set, which means judge ran but found nothing)
-                        if getattr(self.reward_fn, '_gen_judge_upgraded', None) is None:
-                            self.reward_fn.pre_fire_llm_judge(
-                                gen_batch_output=final_gen_batch_output,
-                                prompt_batch=batch,
-                                n_repeat=self.config.actor_rollout_ref.rollout.n,
-                            )
-                        else:
-                            print(f"[LLM Judge] Skipping pre_fire (generation-time judge active, "
-                                  f"{len(self.reward_fn._gen_judge_upgraded)} upgraded)")
 
                         with torch.no_grad():
                             # Set required meta_info for compute_log_prob
@@ -855,12 +781,8 @@ class RayPPOTrainer(object):
 
                         # batch.non_tensor_batch['uid'] = np.array([str(uuid.uuid4()) for _ in range(len(batch.batch))],
                         #                                         dtype=object)
-                        # Use question_id for group recovery after balance_batch
-                        # batch is already repeated by n_agent at this point (384 = 96 questions * 4 agents)
-                        n_agent = self.config.actor_rollout_ref.rollout.n_agent
-                        batch_size_now = batch.batch.batch_size[0]
-                        batch.non_tensor_batch['uid'] = (np.arange(batch_size_now) // n_agent).astype(object)
-
+                        batch.non_tensor_batch['uid'] = batch.non_tensor_batch['index'].copy()
+                                            
                         # repeat to align with repeated responses in rollout
                         batch = batch.repeat(repeat_times=self.config.actor_rollout_ref.rollout.n, interleave=True)
                         batch = batch.union(final_gen_batch_output)
@@ -908,13 +830,9 @@ class RayPPOTrainer(object):
                             reward_tensor = self.rm_wg.compute_rm_score(batch)
                             batch = batch.union(reward_tensor)
 
-                        # we combine with rule-based rm (also collects pre-fired LLM Judge results)
+                        # we combine with rule-based rm
                         reward_tensor = self.reward_fn(batch)
                         batch.batch['token_level_scores'] = reward_tensor
-
-                        # Collect reward intermediate metrics
-                        if hasattr(self.reward_fn, '_step_metrics') and self.reward_fn._step_metrics:
-                            metrics.update(self.reward_fn._step_metrics)
 
                         # compute rewards. apply_kl_penalty if available
                         if not self.config.actor_rollout_ref.actor.use_kl_loss:
@@ -932,9 +850,99 @@ class RayPPOTrainer(object):
                                                   lam=self.config.algorithm.lam,
                                                   num_repeat=self.config.actor_rollout_ref.rollout.n)
 
-                        # === LLM Process Judge: Listwise Ranking === [DISABLED - adds ~160s/step]
-                        # To re-enable: restore from grpo_improved/llm_judge_backup/ray_trainer_with_pjudge.py
-                        # Verified working: step=1, groups=96, upgraded=360 (see logs/train_v1_final.log)
+                        # === LLM Process Judge: Listwise Ranking ===
+                        try:
+                            if not hasattr(self, '_process_judge'):
+                                self._process_judge = GRPOJudgeOrchestrator()
+
+                            if self._process_judge.should_run_process_judge(self.global_steps):
+                                # Extract trajectories and group info
+                                batch_size = batch.batch['responses'].shape[0]
+                                uids = batch.non_tensor_batch['uid']
+
+                                # Decode trajectories for process judge
+                                from transformers import AutoTokenizer
+                                trajectories = []
+                                questions_list = []
+                                gt_list = []
+                                scores_list = []
+
+                                for i in range(batch_size):
+                                    # Get reward score for this trajectory
+                                    reward_sum = batch.batch['token_level_rewards'][i].sum().item()
+                                    scores_list.append(reward_sum)
+
+                                    # Decode trajectory
+                                    prompt_ids = batch.batch['prompts'][i]
+                                    response_ids = batch.batch['responses'][i]
+                                    prompt_length = prompt_ids.shape[-1]
+                                    valid_prompt_length = batch.batch['attention_mask'][i, :prompt_length].sum()
+                                    valid_prompt_ids = prompt_ids[-valid_prompt_length:]
+                                    valid_response_length = batch.batch['attention_mask'][i, prompt_length:].sum()
+                                    valid_response_ids = response_ids[:valid_response_length]
+
+                                    sequences = torch.cat((valid_prompt_ids, valid_response_ids))
+                                    traj_str = self.tokenizer.decode(sequences)
+                                    trajectories.append(traj_str)
+
+                                    # Extract question
+                                    q_match = re.search(r'<question>(.*?)</question>', traj_str, re.DOTALL)
+                                    questions_list.append(q_match.group(1).strip() if q_match else "")
+
+                                    # Ground truth
+                                    gt = batch.non_tensor_batch['reward_model']['ground_truth'][i] if 'reward_model' in batch.non_tensor_batch else ""
+                                    if isinstance(gt, str):
+                                        gt_list.append([gt])
+                                    elif isinstance(gt, list):
+                                        gt_list.append(gt)
+                                    else:
+                                        gt_list.append([str(gt)])
+
+                                # Organize by groups
+                                groups = {}
+                                for i in range(batch_size):
+                                    gid = uids[i]
+                                    if gid not in groups:
+                                        groups[gid] = []
+                                    groups[gid].append(i)
+
+                                # Build group data for listwise ranking
+                                group_questions = []
+                                group_gts = []
+                                group_trajs = []
+                                group_scores = []
+                                group_ids_ordered = []
+
+                                for gid, indices in groups.items():
+                                    if len(indices) >= 2:
+                                        group_questions.append(questions_list[indices[0]])
+                                        group_gts.append(gt_list[indices[0]])
+                                        group_trajs.append([trajectories[i] for i in indices])
+                                        group_scores.append([scores_list[i] for i in indices])
+                                        group_ids_ordered.append((gid, indices))
+
+                                if group_questions:
+                                    # Get listwise rankings from LLM
+                                    group_advantages = self._process_judge.judge_process_listwise(
+                                        group_questions, group_gts, group_trajs, group_scores
+                                    )
+
+                                    # Blend process advantages into outcome advantages
+                                    alpha = 0.3  # blending weight for process judge
+                                    advantages = batch.batch['advantages']
+                                    for g_idx, (gid, indices) in enumerate(group_ids_ordered):
+                                        for local_idx, global_idx in enumerate(indices):
+                                            process_adv = group_advantages[g_idx][local_idx]
+                                            # Get response mask to apply process advantage to all response tokens
+                                            response_length = batch.batch['responses'].shape[-1]
+                                            resp_mask = batch.batch['attention_mask'][global_idx, -response_length:]
+                                            # Blend: (1-alpha) * outcome_adv + alpha * process_adv
+                                            advantages[global_idx] = (1 - alpha) * advantages[global_idx] + alpha * process_adv * resp_mask
+
+                                    batch.batch['advantages'] = advantages
+                                    print(f"[LLM Process Judge] Step {self.global_steps}: judged {len(group_questions)} groups")
+                        except Exception as e:
+                            print(f"[LLM Process Judge] Error at step {self.global_steps}: {e}")
 
                     # update critic
                     if self.use_critic:
@@ -946,7 +954,6 @@ class RayPPOTrainer(object):
                     # implement critic warmup
                     if self.config.trainer.critic_warmup <= self.global_steps:
                         # update actor
-                        torch.cuda.empty_cache()
                         with _timer('update_actor', timing_raw):
                             if self.config.do_search and self.config.actor_rollout_ref.actor.state_masking:
                                 batch, metrics = self._create_loss_mask(batch, metrics)

@@ -1,0 +1,310 @@
+2026-05-22 22:50:35,996	INFO worker.py:2012 -- Started a local Ray instance.
+/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+[36m(main_task pid=2107365)[0m {'actor_rollout_ref': {'actor': {'clip_ratio': 0.2,
+[36m(main_task pid=2107365)[0m                                  'entropy_coeff': 0.001,
+[36m(main_task pid=2107365)[0m                                  'fsdp_config': {'fsdp_size': -1,
+[36m(main_task pid=2107365)[0m                                                  'grad_offload': True,
+[36m(main_task pid=2107365)[0m                                                  'optimizer_offload': True,
+[36m(main_task pid=2107365)[0m                                                  'param_offload': True,
+[36m(main_task pid=2107365)[0m                                                  'wrap_policy': {'min_num_params': 0}},
+[36m(main_task pid=2107365)[0m                                  'grad_clip': 1.0,
+[36m(main_task pid=2107365)[0m                                  'kl_loss_coef': 0.001,
+[36m(main_task pid=2107365)[0m                                  'kl_loss_type': 'low_var_kl',
+[36m(main_task pid=2107365)[0m                                  'optim': {'lr': 2e-07,
+[36m(main_task pid=2107365)[0m                                            'lr_warmup_steps_ratio': 0.05,
+[36m(main_task pid=2107365)[0m                                            'min_lr_ratio': None,
+[36m(main_task pid=2107365)[0m                                            'total_training_steps': -1,
+[36m(main_task pid=2107365)[0m                                            'warmup_style': 'constant'},
+[36m(main_task pid=2107365)[0m                                  'ppo_epochs': 1,
+[36m(main_task pid=2107365)[0m                                  'ppo_max_token_len_per_gpu': 16384,
+[36m(main_task pid=2107365)[0m                                  'ppo_micro_batch_size': 1,
+[36m(main_task pid=2107365)[0m                                  'ppo_mini_batch_size': 12,
+[36m(main_task pid=2107365)[0m                                  'shuffle': False,
+[36m(main_task pid=2107365)[0m                                  'state_masking': True,
+[36m(main_task pid=2107365)[0m                                  'strategy': 'fsdp',
+[36m(main_task pid=2107365)[0m                                  'ulysses_sequence_parallel_size': 1,
+[36m(main_task pid=2107365)[0m                                  'use_dynamic_bsz': False,
+[36m(main_task pid=2107365)[0m                                  'use_kl_loss': True},
+[36m(main_task pid=2107365)[0m                        'hybrid_engine': True,
+[36m(main_task pid=2107365)[0m                        'model': {'enable_gradient_checkpointing': True,
+[36m(main_task pid=2107365)[0m                                  'external_lib': None,
+[36m(main_task pid=2107365)[0m                                  'override_config': {},
+[36m(main_task pid=2107365)[0m                                  'path': '/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B',
+[36m(main_task pid=2107365)[0m                                  'use_remove_padding': False},
+[36m(main_task pid=2107365)[0m                        'ref': {'fsdp_config': {'fsdp_size': -1,
+[36m(main_task pid=2107365)[0m                                                'param_offload': True,
+[36m(main_task pid=2107365)[0m                                                'wrap_policy': {'min_num_params': 0}},
+[36m(main_task pid=2107365)[0m                                'log_prob_max_token_len_per_gpu': 16384,
+[36m(main_task pid=2107365)[0m                                'log_prob_micro_batch_size': 1,
+[36m(main_task pid=2107365)[0m                                'log_prob_use_dynamic_bsz': False,
+[36m(main_task pid=2107365)[0m                                'ulysses_sequence_parallel_size': 1},
+[36m(main_task pid=2107365)[0m                        'rollout': {'do_sample': True,
+[36m(main_task pid=2107365)[0m                                    'dtype': 'bfloat16',
+[36m(main_task pid=2107365)[0m                                    'enforce_eager': True,
+[36m(main_task pid=2107365)[0m                                    'free_cache_engine': True,
+[36m(main_task pid=2107365)[0m                                    'gpu_memory_utilization': 0.55,
+[36m(main_task pid=2107365)[0m                                    'ignore_eos': False,
+[36m(main_task pid=2107365)[0m                                    'load_format': 'dummy_dtensor',
+[36m(main_task pid=2107365)[0m                                    'log_prob_max_token_len_per_gpu': 16384,
+[36m(main_task pid=2107365)[0m                                    'log_prob_micro_batch_size': 1,
+[36m(main_task pid=2107365)[0m                                    'log_prob_use_dynamic_bsz': False,
+[36m(main_task pid=2107365)[0m                                    'max_num_batched_tokens': 8192,
+[36m(main_task pid=2107365)[0m                                    'max_num_seqs': 1024,
+[36m(main_task pid=2107365)[0m                                    'n': 1,
+[36m(main_task pid=2107365)[0m                                    'n_agent': 5,
+[36m(main_task pid=2107365)[0m                                    'name': 'vllm',
+[36m(main_task pid=2107365)[0m                                    'prompt_length': 4096,
+[36m(main_task pid=2107365)[0m                                    'response_length': 1000,
+[36m(main_task pid=2107365)[0m                                    'temperature': 1,
+[36m(main_task pid=2107365)[0m                                    'tensor_model_parallel_size': 1,
+[36m(main_task pid=2107365)[0m                                    'top_k': -1,
+[36m(main_task pid=2107365)[0m                                    'top_p': 0.95}},
+[36m(main_task pid=2107365)[0m  'algorithm': {'adv_estimator': 'grpo',
+[36m(main_task pid=2107365)[0m                'gamma': 1.0,
+[36m(main_task pid=2107365)[0m                'kl_ctrl': {'kl_coef': 0.001, 'type': 'fixed'},
+[36m(main_task pid=2107365)[0m                'kl_penalty': 'kl',
+[36m(main_task pid=2107365)[0m                'lam': 1.0,
+[36m(main_task pid=2107365)[0m                'no_think_rl': False,
+[36m(main_task pid=2107365)[0m                'state_masking': {'end_state_marker': '</information>',
+[36m(main_task pid=2107365)[0m                                  'start_state_marker': '<information>'}},
+[36m(main_task pid=2107365)[0m  'critic': {'cliprange_value': 0.5,
+[36m(main_task pid=2107365)[0m             'forward_max_token_len_per_gpu': 32768,
+[36m(main_task pid=2107365)[0m             'forward_micro_batch_size': 64,
+[36m(main_task pid=2107365)[0m             'grad_clip': 1.0,
+[36m(main_task pid=2107365)[0m             'model': {'enable_gradient_checkpointing': False,
+[36m(main_task pid=2107365)[0m                       'external_lib': None,
+[36m(main_task pid=2107365)[0m                       'fsdp_config': {'fsdp_size': -1,
+[36m(main_task pid=2107365)[0m                                       'grad_offload': False,
+[36m(main_task pid=2107365)[0m                                       'optimizer_offload': False,
+[36m(main_task pid=2107365)[0m                                       'param_offload': False,
+[36m(main_task pid=2107365)[0m                                       'wrap_policy': {'min_num_params': 0}},
+[36m(main_task pid=2107365)[0m                       'override_config': {},
+[36m(main_task pid=2107365)[0m                       'path': '~/models/deepseek-llm-7b-chat',
+[36m(main_task pid=2107365)[0m                       'tokenizer_path': '/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B',
+[36m(main_task pid=2107365)[0m                       'use_remove_padding': False},
+[36m(main_task pid=2107365)[0m             'optim': {'lr': 1e-05,
+[36m(main_task pid=2107365)[0m                       'lr_warmup_steps_ratio': 0.0,
+[36m(main_task pid=2107365)[0m                       'min_lr_ratio': None,
+[36m(main_task pid=2107365)[0m                       'total_training_steps': -1,
+[36m(main_task pid=2107365)[0m                       'warmup_style': 'constant'},
+[36m(main_task pid=2107365)[0m             'ppo_epochs': 1,
+[36m(main_task pid=2107365)[0m             'ppo_max_token_len_per_gpu': 32768,
+[36m(main_task pid=2107365)[0m             'ppo_micro_batch_size': 64,
+[36m(main_task pid=2107365)[0m             'ppo_mini_batch_size': 12,
+[36m(main_task pid=2107365)[0m             'shuffle': False,
+[36m(main_task pid=2107365)[0m             'strategy': 'fsdp',
+[36m(main_task pid=2107365)[0m             'ulysses_sequence_parallel_size': 1,
+[36m(main_task pid=2107365)[0m             'use_dynamic_bsz': False},
+[36m(main_task pid=2107365)[0m  'data': {'max_obs_length': 1000,
+[36m(main_task pid=2107365)[0m           'max_prompt_length': 4096,
+[36m(main_task pid=2107365)[0m           'max_response_length': 1000,
+[36m(main_task pid=2107365)[0m           'max_start_length': 2048,
+[36m(main_task pid=2107365)[0m           'prompt_key': 'prompt',
+[36m(main_task pid=2107365)[0m           'return_raw_chat': False,
+[36m(main_task pid=2107365)[0m           'return_raw_input_ids': False,
+[36m(main_task pid=2107365)[0m           'shuffle_train_dataloader': True,
+[36m(main_task pid=2107365)[0m           'tokenizer': None,
+[36m(main_task pid=2107365)[0m           'train_batch_size': 12,
+[36m(main_task pid=2107365)[0m           'train_data_num': None,
+[36m(main_task pid=2107365)[0m           'train_files': 'data/nq_hotpotqa_train_multi_2/train.parquet',
+[36m(main_task pid=2107365)[0m           'val_batch_size': 12,
+[36m(main_task pid=2107365)[0m           'val_data_num': None,
+[36m(main_task pid=2107365)[0m           'val_files': 'data/nq_hotpotqa_train_multi_2/test.parquet'},
+[36m(main_task pid=2107365)[0m  'do_search': True,
+[36m(main_task pid=2107365)[0m  'max_turns': 6,
+[36m(main_task pid=2107365)[0m  'retriever': {'topk': 3, 'url': 'http://127.0.0.1:8013/retrieve'},
+[36m(main_task pid=2107365)[0m  'reward_model': {'enable': False,
+[36m(main_task pid=2107365)[0m                   'forward_max_token_len_per_gpu': 32768,
+[36m(main_task pid=2107365)[0m                   'max_length': None,
+[36m(main_task pid=2107365)[0m                   'micro_batch_size': 64,
+[36m(main_task pid=2107365)[0m                   'model': {'external_lib': None,
+[36m(main_task pid=2107365)[0m                             'fsdp_config': {'min_num_params': 0,
+[36m(main_task pid=2107365)[0m                                             'param_offload': False},
+[36m(main_task pid=2107365)[0m                             'input_tokenizer': '/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B',
+[36m(main_task pid=2107365)[0m                             'path': '~/models/FsfairX-LLaMA3-RM-v0.1',
+[36m(main_task pid=2107365)[0m                             'use_remove_padding': False},
+[36m(main_task pid=2107365)[0m                   'strategy': 'fsdp',
+[36m(main_task pid=2107365)[0m                   'ulysses_sequence_parallel_size': 1,
+[36m(main_task pid=2107365)[0m                   'use_dynamic_bsz': False},
+[36m(main_task pid=2107365)[0m  'trainer': {'critic_warmup': 0,
+[36m(main_task pid=2107365)[0m              'default_hdfs_dir': None,
+[36m(main_task pid=2107365)[0m              'default_local_dir': 'verl_checkpoints/SMOKE-GRPO-6GPU-1STEP',
+[36m(main_task pid=2107365)[0m              'experiment_name': 'SMOKE-GRPO-6GPU-1STEP',
+[36m(main_task pid=2107365)[0m              'logger': ['console'],
+[36m(main_task pid=2107365)[0m              'n_gpus_per_node': 6,
+[36m(main_task pid=2107365)[0m              'nnodes': 1,
+[36m(main_task pid=2107365)[0m              'project_name': 'MEM1',
+[36m(main_task pid=2107365)[0m              'save_freq': -1,
+[36m(main_task pid=2107365)[0m              'test_freq': -1,
+[36m(main_task pid=2107365)[0m              'total_epochs': 1,
+[36m(main_task pid=2107365)[0m              'total_training_steps': 1,
+[36m(main_task pid=2107365)[0m              'val_before_train': False,
+[36m(main_task pid=2107365)[0m              'val_only': False}}
+[36m(main_task pid=2107365)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/vllm/connections.py:8: RuntimeWarning: Failed to read commit hash:
+[36m(main_task pid=2107365)[0m No module named 'vllm._version'
+[36m(main_task pid=2107365)[0m   from vllm.version import __version__ as VLLM_VERSION
+[36m(main_task pid=2107365)[0m original dataset len: 84807
+[36m(main_task pid=2107365)[0m filter dataset len: 84807
+[36m(main_task pid=2107365)[0m filtered training dataset size: 84807
+[36m(main_task pid=2107365)[0m original dataset len: 25854
+[36m(main_task pid=2107365)[0m filter dataset len: 25854
+[36m(main_task pid=2107365)[0m filtered validation dataset size: 25854
+[36m(main_task pid=2107365)[0m Size of train dataloader: 7067
+[36m(main_task pid=2107365)[0m Size of val dataloader: 2154
+[36m(main_task pid=2107365)[0m Total training steps: 1
+[36m(main_task pid=2107365)[0m Using LocalLogger is deprecated. The constructor API will change 
+[36m(pid=2107951)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/vllm/connections.py:8: RuntimeWarning: Failed to read commit hash:
+[36m(pid=2107951)[0m No module named 'vllm._version'
+[36m(pid=2107951)[0m   from vllm.version import __version__ as VLLM_VERSION
+[36m(pid=2108159)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/vllm/connections.py:8: RuntimeWarning: Failed to read commit hash:
+[36m(pid=2108159)[0m No module named 'vllm._version'
+[36m(pid=2108159)[0m   from vllm.version import __version__ as VLLM_VERSION
+[36m(WorkerDict pid=2108159)[0m Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+[36m(WorkerDict pid=2107951)[0m Model config after override: Qwen2Config {
+[36m(WorkerDict pid=2107951)[0m   "_name_or_path": "/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B",
+[36m(WorkerDict pid=2107951)[0m   "architectures": [
+[36m(WorkerDict pid=2107951)[0m     "Qwen2ForCausalLM"
+[36m(WorkerDict pid=2107951)[0m   ],
+[36m(WorkerDict pid=2107951)[0m   "attention_dropout": 0.0,
+[36m(WorkerDict pid=2107951)[0m   "eos_token_id": 151643,
+[36m(WorkerDict pid=2107951)[0m   "hidden_act": "silu",
+[36m(WorkerDict pid=2107951)[0m   "hidden_size": 3584,
+[36m(WorkerDict pid=2107951)[0m   "initializer_range": 0.02,
+[36m(WorkerDict pid=2107951)[0m   "intermediate_size": 18944,
+[36m(WorkerDict pid=2107951)[0m   "max_position_embeddings": 131072,
+[36m(WorkerDict pid=2107951)[0m   "max_window_layers": 28,
+[36m(WorkerDict pid=2107951)[0m   "model_type": "qwen2",
+[36m(WorkerDict pid=2107951)[0m   "num_attention_heads": 28,
+[36m(WorkerDict pid=2107951)[0m   "num_hidden_layers": 28,
+[36m(WorkerDict pid=2107951)[0m   "num_key_value_heads": 4,
+[36m(WorkerDict pid=2107951)[0m   "pad_token_id": 151643,
+[36m(WorkerDict pid=2107951)[0m   "rms_norm_eps": 1e-06,
+[36m(WorkerDict pid=2107951)[0m   "rope_scaling": null,
+[36m(WorkerDict pid=2107951)[0m   "rope_theta": 1000000.0,
+[36m(WorkerDict pid=2107951)[0m   "sliding_window": null,
+[36m(WorkerDict pid=2107951)[0m   "tie_word_embeddings": false,
+[36m(WorkerDict pid=2107951)[0m   "torch_dtype": "bfloat16",
+[36m(WorkerDict pid=2107951)[0m   "transformers_version": "4.47.1",
+[36m(WorkerDict pid=2107951)[0m   "use_cache": true,
+[36m(WorkerDict pid=2107951)[0m   "use_mrope": false,
+[36m(WorkerDict pid=2107951)[0m   "use_sliding_window": false,
+[36m(WorkerDict pid=2107951)[0m   "vocab_size": 152064
+[36m(WorkerDict pid=2107951)[0m }
+[36m(WorkerDict pid=2107951)[0m 
+[36m(WorkerDict pid=2108159)[0m Loading checkpoint shards:  25%|██▌       | 1/4 [00:00<00:00,  6.26it/s]
+[36m(WorkerDict pid=2108159)[0m Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  6.14it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  6.15it/s]
+[36m(WorkerDict pid=2107951)[0m NCCL version 2.20.5+cuda12.4
+[36m(WorkerDict pid=2107951)[0m Qwen2ForCausalLM contains 7.62B parameters
+[36m(WorkerDict pid=2107951)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f6eddfffa60>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f6eddfff940>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+[36m(WorkerDict pid=2108159)[0m Actor use_remove_padding=False
+[36m(WorkerDict pid=2108160)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f7e8c5f7a60>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f7e8c5f7940>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])[32m [repeated 5x across cluster] (Ray deduplicates logs by default. Set RAY_DEDUP_LOGS=0 to disable log deduplication, or see https://docs.ray.io/en/master/ray-observability/user-guides/configure-logging.html#log-deduplication for more options.)[0m
+[36m(WorkerDict pid=2107951)[0m Model config after override: Qwen2Config {
+[36m(WorkerDict pid=2107951)[0m   "_name_or_path": "/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B",
+[36m(WorkerDict pid=2107951)[0m   "architectures": [
+[36m(WorkerDict pid=2107951)[0m     "Qwen2ForCausalLM"
+[36m(WorkerDict pid=2107951)[0m   ],
+[36m(WorkerDict pid=2107951)[0m   "attention_dropout": 0.0,
+[36m(WorkerDict pid=2107951)[0m   "eos_token_id": 151643,
+[36m(WorkerDict pid=2107951)[0m   "hidden_act": "silu",
+[36m(WorkerDict pid=2107951)[0m   "hidden_size": 3584,
+[36m(WorkerDict pid=2107951)[0m   "initializer_range": 0.02,
+[36m(WorkerDict pid=2107951)[0m   "intermediate_size": 18944,
+[36m(WorkerDict pid=2107951)[0m   "max_position_embeddings": 131072,
+[36m(WorkerDict pid=2107951)[0m   "max_window_layers": 28,
+[36m(WorkerDict pid=2107951)[0m   "model_type": "qwen2",
+[36m(WorkerDict pid=2107951)[0m   "num_attention_heads": 28,
+[36m(WorkerDict pid=2107951)[0m   "num_hidden_layers": 28,
+[36m(WorkerDict pid=2107951)[0m   "num_key_value_heads": 4,
+[36m(WorkerDict pid=2107951)[0m   "pad_token_id": 151643,
+[36m(WorkerDict pid=2107951)[0m   "rms_norm_eps": 1e-06,
+[36m(WorkerDict pid=2107951)[0m   "rope_scaling": null,
+[36m(WorkerDict pid=2107951)[0m   "rope_theta": 1000000.0,
+[36m(WorkerDict pid=2107951)[0m   "sliding_window": null,
+[36m(WorkerDict pid=2107951)[0m   "tie_word_embeddings": false,
+[36m(WorkerDict pid=2107951)[0m   "torch_dtype": "bfloat16",
+[36m(WorkerDict pid=2107951)[0m   "transformers_version": "4.47.1",
+[36m(WorkerDict pid=2107951)[0m   "use_cache": true,
+[36m(WorkerDict pid=2107951)[0m   "use_mrope": false,
+[36m(WorkerDict pid=2107951)[0m   "use_sliding_window": false,
+[36m(WorkerDict pid=2107951)[0m   "vocab_size": 152064
+[36m(WorkerDict pid=2107951)[0m }
+[36m(WorkerDict pid=2107951)[0m 
+[36m(pid=2108157)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/vllm/connections.py:8: RuntimeWarning: Failed to read commit hash:[32m [repeated 4x across cluster][0m
+[36m(pid=2108157)[0m No module named 'vllm._version'[32m [repeated 4x across cluster][0m
+[36m(pid=2108157)[0m   from vllm.version import __version__ as VLLM_VERSION[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=2107951)[0m Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s][32m [repeated 6x across cluster][0m
+[36m(WorkerDict pid=2108157)[0m Loading checkpoint shards:  75%|███████▌  | 3/4 [00:00<00:00,  5.41it/s][32m [repeated 17x across cluster][0m
+[36m(WorkerDict pid=2108157)[0m Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  5.51it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  5.48it/s][32m [repeated 5x across cluster][0m
+[36m(pid=gcs_server)[0m [2026-05-22 22:51:04,779 E 2099869 2099869] (gcs_server) gcs_server.cc:302: Failed to establish connection to the event+metrics exporter agent. Events and metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14
+[33m(raylet)[0m [2026-05-22 22:51:05,932 E 2100131 2100131] (raylet) main.cc:975: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14
+[36m(pid=2100261)[0m [2026-05-22 22:51:06,478 E 2100261 2101093] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14
+[2026-05-22 22:51:07,306 E 2099368 2100250] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14
+[36m(WorkerDict pid=2108156)[0m Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s][32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2107951)[0m Loading checkpoint shards:  50%|█████     | 2/4 [00:06<00:06,  3.26s/it][32m [repeated 17x across cluster][0m
+[36m(WorkerDict pid=2108157)[0m Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  4.56it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00,  4.62it/s][32m [repeated 5x across cluster][0m
+[36m(bundle_reservation_check_func pid=2107665)[0m [2026-05-22 22:51:14,060 E 2107665 2107863] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14[32m [repeated 113x across cluster][0m
+[36m(WorkerDict pid=2107951)[0m Loading checkpoint shards:  75%|███████▌  | 3/4 [00:09<00:03,  3.33s/it]
+[36m(WorkerDict pid=2107951)[0m Loading checkpoint shards: 100%|██████████| 4/4 [00:13<00:00,  3.28s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:13<00:00,  3.30s/it]
+[36m(WorkerDict pid=2107951)[0m Qwen2ForCausalLM contains 7.62B parameters
+[36m(WorkerDict pid=2107951)[0m Actor use_remove_padding=False[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2107951)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f6eddfffa60>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f6eddfff940>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+[36m(WorkerDict pid=2108159)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f862c4b4a60>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f862c4b4940>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])
+[36m(WorkerGroupRegisterCenter pid=2108058)[0m [2026-05-22 22:51:19,631 E 2108058 2108100] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14[32m [repeated 2x across cluster][0m
+[36m(WorkerDict pid=2108159)[0m Total steps: 1, num_warmup_steps: 0
+[36m(WorkerDict pid=2108160)[0m wrap_policy: functools.partial(<function _or_policy at 0x7f7e8c5f7a60>, policies=[functools.partial(<function transformer_auto_wrap_policy at 0x7f7e8c5f7940>, transformer_layer_cls={<class 'transformers.models.qwen2.modeling_qwen2.Qwen2DecoderLayer'>})])[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=2107951)[0m Actor use_remove_padding=False
+[36m(WorkerDict pid=2107951)[0m Before building vllm rollout, memory allocated (GB): 4.728429794311523, memory reserved (GB): 4.97265625
+[36m(WorkerDict pid=2108157)[0m WARNING 05-22 22:51:31 config.py:380] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used
+[36m(WorkerDict pid=2107951)[0m Total steps: 1, num_warmup_steps: 0[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2108160)[0m Actor use_remove_padding=False[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2108158)[0m local rank 0
+[36m(WorkerDict pid=2108159)[0m NCCL version 2.20.5+cuda12.4
+[36m(WorkerDict pid=2107951)[0m before init cache memory allocated: 20.408095744GB, reserved: 20.524826624GB
+[36m(WorkerDict pid=2107951)[0m after init cache memory allocated: 28.570211328GB, reserved: 28.686942208GB
+[36m(WorkerDict pid=2108160)[0m WARNING 05-22 22:51:32 config.py:380] To see benefits of async output processing, enable CUDA graph. Since, enforce-eager is enabled, async output processor cannot be used[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2108160)[0m local rank 0[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2108156)[0m kwargs: {'n': 1, 'logprobs': 1, 'max_tokens': 1000, 'detokenize': False, 'temperature': 1, 'top_k': -1, 'top_p': 0.95, 'ignore_eos': False}
+[36m(WorkerDict pid=2108156)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:689: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+[36m(WorkerDict pid=2108156)[0m   warnings.warn(
+[36m(WorkerDict pid=2108156)[0m [2026-05-22 22:51:20,399 E 2108156 2108313] core_worker_process.cc:825: Failed to establish connection to the metrics exporter agent. Metrics will not be exported. Exporter agent status: RpcError: Running out of retries to initialize the metrics agent. rpc_code: 14[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2107951)[0m After building vllm rollout, memory allocated (GB): 12.369180679321289, memory reserved (GB): 26.716796875
+[36m(WorkerDict pid=2107951)[0m After building sharding manager, memory allocated (GB): 12.369180679321289, memory reserved (GB): 26.716796875
+[36m(main_task pid=2107365)[0m epoch 0, step 1
+[33m(raylet)[0m [2026-05-22 23:01:45,933 E 2100131 2100131] (raylet) node_manager.cc:3252: 1 Workers (tasks / actors) killed due to memory pressure (OOM), 0 Workers crashed due to other reasons at node (ID: 2a8ee3461015791629be3aba9685a16830a21f78639db5f337d3389b, IP: 10.94.130.38) over the last time period. To see more information about the Workers killed on this node, use `ray logs raylet.out -ip 10.94.130.38`
+[33m(raylet)[0m 
+[33m(raylet)[0m Refer to the documentation on how to address the out of memory issue: https://docs.ray.io/en/latest/ray-core/scheduling/ray-oom-prevention.html. Consider provisioning more memory on this node or reducing task parallelism by requesting more CPUs per task. To adjust the kill threshold, set the environment variable `RAY_memory_usage_threshold` when starting Ray. To disable worker killing, set the environment variable `RAY_memory_monitor_refresh_ms` to zero.
+[36m(WorkerDict pid=2108157)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:689: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .[32m [repeated 5x across cluster][0m
+[36m(WorkerDict pid=2108157)[0m   warnings.warn([32m [repeated 5x across cluster][0m
+Error executing job with overrides: ['data.train_files=data/nq_hotpotqa_train_multi_2/train.parquet', 'data.val_files=data/nq_hotpotqa_train_multi_2/test.parquet', 'data.train_data_num=null', 'data.val_data_num=null', 'data.train_batch_size=12', 'data.val_batch_size=12', 'data.max_prompt_length=4096', 'data.max_response_length=1000', 'data.max_start_length=2048', 'data.max_obs_length=1000', 'data.shuffle_train_dataloader=True', 'algorithm.adv_estimator=grpo', 'actor_rollout_ref.model.path=/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B', 'actor_rollout_ref.actor.optim.lr=2e-7', 'actor_rollout_ref.model.enable_gradient_checkpointing=true', 'actor_rollout_ref.model.use_remove_padding=False', 'actor_rollout_ref.actor.optim.lr_warmup_steps_ratio=0.05', 'actor_rollout_ref.actor.use_kl_loss=true', 'actor_rollout_ref.actor.kl_loss_coef=0.001', 'actor_rollout_ref.actor.kl_loss_type=low_var_kl', 'actor_rollout_ref.actor.ppo_mini_batch_size=12', 'actor_rollout_ref.actor.ppo_micro_batch_size=1', 'actor_rollout_ref.actor.fsdp_config.param_offload=true', 'actor_rollout_ref.actor.fsdp_config.grad_offload=true', 'actor_rollout_ref.actor.fsdp_config.optimizer_offload=true', 'actor_rollout_ref.rollout.log_prob_micro_batch_size=1', 'actor_rollout_ref.rollout.tensor_model_parallel_size=1', 'actor_rollout_ref.rollout.name=vllm', 'actor_rollout_ref.rollout.gpu_memory_utilization=0.55', 'actor_rollout_ref.ref.log_prob_micro_batch_size=1', 'actor_rollout_ref.ref.fsdp_config.param_offload=True', 'actor_rollout_ref.rollout.n_agent=5', 'actor_rollout_ref.rollout.temperature=1', 'actor_rollout_ref.actor.state_masking=true', 'algorithm.kl_ctrl.kl_coef=0.001', 'algorithm.no_think_rl=false', 'trainer.critic_warmup=0', "trainer.logger=['console']", '+trainer.val_only=false', '+trainer.val_before_train=false', 'trainer.default_hdfs_dir=null', 'trainer.n_gpus_per_node=6', 'trainer.nnodes=1', 'trainer.save_freq=-1', 'trainer.test_freq=-1', 'trainer.project_name=MEM1', 'trainer.experiment_name=SMOKE-GRPO-6GPU-1STEP', 'trainer.total_epochs=1', 'trainer.total_training_steps=1', 'trainer.default_local_dir=verl_checkpoints/SMOKE-GRPO-6GPU-1STEP', 'max_turns=6', 'retriever.url=http://127.0.0.1:8013/retrieve', 'retriever.topk=3']
+Traceback (most recent call last):
+  File "/root/paddlejob/workspace/mem1/MEM1/Mem1/train/verl/trainer/main_ppo.py", line 129, in main
+    ray.get(main_task.remote(config))
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/auto_init_hook.py", line 22, in auto_init_wrapper
+    return fn(*args, **kwargs)
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/client_mode_hook.py", line 104, in wrapper
+    return func(*args, **kwargs)
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/worker.py", line 2961, in get
+    values, debugger_breakpoint = worker.get_objects(
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/worker.py", line 1028, in get_objects
+    raise value
+ray.exceptions.OutOfMemoryError: Task was killed due to the node running low on memory.
+Memory on the node (IP: 10.94.130.38, ID: 2a8ee3461015791629be3aba9685a16830a21f78639db5f337d3389b) where the lease (actor ID: NIL_IDlease ID: 0000000001000000ffffffffffffffffffffffffffffffffffffffffffffffff, name=main_task, pid=2107365, memory used=1.11GB) was running was 814.77GB / 896.00GB (0.909337), which exceeds the memory usage threshold of 0.9. Ray killed this worker (ID: 463c5c2d8b6d79a568f8b81d6a128967b865c6bb7626a08625977a63) because it was the most recently scheduled task; to see more information about memory usage on this node, use `ray logs raylet.out -ip 10.94.130.38`. To see the logs of the worker, use `ray logs worker-463c5c2d8b6d79a568f8b81d6a128967b865c6bb7626a08625977a63*out -ip 10.94.130.38. Top 10 memory users:
+PID	MEM(GB)	COMMAND
+2108158	67.70	ray::WorkerDict.actor_rollout_generate_sequences
+2108160	66.87	ray::WorkerDict.actor_rollout_generate_sequences
+2108157	66.83	ray::WorkerDict.actor_rollout_generate_sequences
+2108159	66.54	ray::WorkerDict.actor_rollout_generate_sequences
+2107951	66.24	ray::WorkerDict.actor_rollout_generate_sequences
+2108156	66.03	ray::WorkerDict.actor_rollout_generate_sequences
+2098670	65.98	ray::WorkerDict.actor_rollout_generate_sequences
+2098669	65.75	ray::WorkerDict.actor_rollout_generate_sequences
+2098415	65.30	ray::WorkerDict.actor_rollout_generate_sequences
+2098668	65.28	ray::WorkerDict.actor_rollout_generate_sequences
+Refer to the documentation on how to address the out of memory issue: https://docs.ray.io/en/latest/ray-core/scheduling/ray-oom-prevention.html. Consider provisioning more memory on this node or reducing task parallelism by requesting more CPUs per task. To adjust the kill threshold, set the environment variable `RAY_memory_usage_threshold` when starting Ray. To disable worker killing, set the environment variable `RAY_memory_monitor_refresh_ms` to zero.
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+[36m(WorkerDict pid=2108157)[0m NCCL version 2.20.5+cuda12.4[32m [repeated 4x across cluster][0m
+[36m(WorkerDict pid=2108157)[0m kwargs: {'n': 1, 'logprobs': 1, 'max_tokens': 1000, 'detokenize': False, 'temperature': 1, 'top_k': -1, 'top_p': 0.95, 'ignore_eos': False}[32m [repeated 5x across cluster][0m
+Command exited with non-zero status 1
+SMOKE_ELAPSED 11:34.78

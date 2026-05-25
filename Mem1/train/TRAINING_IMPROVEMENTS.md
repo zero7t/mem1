@@ -248,3 +248,52 @@ timing_s/update_actor: 102.5s ← 训练阶段（含 LLDS 开销）
 ```
 
 无 OOM，bs=96 顺利通过。
+
+---
+
+## 改进四：中间 Reward 信号 Metrics 记录 (2026-05-24)
+
+### 问题
+Process reward、LLM Judge 升级数等关键中间信号只通过 print 输出到 stdout，未记录到 swanlab，无法追踪训练过程中 reward 信号的变化趋势。
+
+### 修改
+**文件**: `verl/trainer/main_ppo.py`, `verl/trainer/ppo/ray_trainer.py`
+
+在 `RewardManager.__call__()` 中收集以下 metrics，通过 `reward_fn._step_metrics` 传递给 training loop 写入 swanlab：
+
+| Metric | 含义 |
+|--------|------|
+| `reward/em_score_mean` | 纯 EM 匹配平均分 |
+| `reward/em_score_nonzero_ratio` | EM>0 的样本比例 |
+| `reward/process_reward_mean` | 过程奖励均值 |
+| `reward/process_reward_max` | 过程奖励最大值 |
+| `reward/process_reward_nonzero_ratio` | 有过程奖励的样本比例 |
+| `judge/llm_judge_fired` | LLM Judge 发出的 API 调用数 |
+| `judge/llm_judge_upgraded` | LLM Judge 升级的样本数 |
+| `judge/gen_time_judge_fired` | 生成时 Judge 发出的调用数 |
+| `judge/gen_time_judge_upgraded` | 生成时 Judge 升级的样本数 |
+| `judge/total_upgraded` | 总升级数 |
+
+---
+
+## 改进五：update_actor 显存碎片化修复 (2026-05-24)
+
+### 问题
+`update_actor` 耗时逐步膨胀（step1=163s → step2=214s → step3=274s），MFU 持续下降（0.076→0.060→0.044）。
+
+**根因**: `param_offload=true` + vLLM rollout 后 GPU 显存碎片化，导致 actor update 阶段 PyTorch 分配器效率持续下降。
+
+### 修改
+**文件**: `verl/trainer/ppo/ray_trainer.py`
+
+在 `update_actor` 之前添加 `torch.cuda.empty_cache()`，将 PyTorch 缓存的空闲碎片块归还 CUDA driver，使后续分配能获得大块连续显存。
+
+```python
+# implement critic warmup
+if self.config.trainer.critic_warmup <= self.global_steps:
+    torch.cuda.empty_cache()  # 清理 vLLM 遗留的显存碎片
+    with _timer('update_actor', timing_raw):
+        ...
+```
+
+预期效果：`update_actor` 时间稳定在 ~160s，不再逐步膨胀。

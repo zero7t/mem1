@@ -1,11 +1,4 @@
 #!/bin/bash
-# Full improved training script:
-#   - DAPO-lite + Dr.GRPO + LLDS-MA (algorithm)
-#   - Rule Process Reward (4 dimensions)
-#   - LLM Outcome Judge (semantic EM)
-#   - LLM Process Judge (listwise ranking, all groups)
-#   - n_agent=4, warmup=0.02
-
 cd /root/paddlejob/workspace/mem1/MEM1/Mem1/train
 export PATH=/root/paddlejob/workspace/miniforge3/envs/mem1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
@@ -15,7 +8,7 @@ export RAY_memory_usage_threshold=0.9
 export PYTHONUNBUFFERED=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-# IMPORTANT: Unset proxy for LLM Judge API (internal network)
+# Unset proxy for LLM Judge API (internal network)
 unset http_proxy
 unset https_proxy
 unset HTTP_PROXY
@@ -52,7 +45,7 @@ exec python -m verl.trainer.main_ppo \
   actor_rollout_ref.rollout.log_prob_micro_batch_size=12 \
   actor_rollout_ref.rollout.tensor_model_parallel_size=1 \
   actor_rollout_ref.rollout.name=vllm \
-  actor_rollout_ref.rollout.gpu_memory_utilization=0.45 \
+  actor_rollout_ref.rollout.gpu_memory_utilization=0.3 \
   actor_rollout_ref.ref.log_prob_micro_batch_size=12 \
   actor_rollout_ref.ref.fsdp_config.param_offload=True \
   actor_rollout_ref.rollout.n_agent=4 \
@@ -61,7 +54,7 @@ exec python -m verl.trainer.main_ppo \
   algorithm.kl_ctrl.kl_coef=0.001 \
   algorithm.no_think_rl=false \
   trainer.critic_warmup=0 \
-  "trainer.logger=['swanlab','console']" \
+  "trainer.logger=['console']" \
   +trainer.val_only=false \
   +trainer.val_before_train=false \
   trainer.default_hdfs_dir=null \
@@ -70,10 +63,10 @@ exec python -m verl.trainer.main_ppo \
   trainer.save_freq=100 \
   trainer.test_freq=-1 \
   trainer.project_name=MEM1 \
-  trainer.experiment_name=FULL-n4-bs96-noJudge \
+  trainer.experiment_name=test-gen-judge-v2 \
   trainer.total_epochs=1 \
-  trainer.total_training_steps=883 \
-  trainer.default_local_dir=verl_checkpoints/FULL-n4-bs96-noJudge \
+  trainer.total_training_steps=2 \
+  trainer.default_local_dir=verl_checkpoints/test-gen-judge-v2 \
   max_turns=6 \
   retriever.url=http://127.0.0.1:8013/retrieve \
   retriever.topk=3

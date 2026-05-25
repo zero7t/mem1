@@ -33,7 +33,7 @@ DEFAULT_CONFIG = {
     "temperature": 0.1,  # Low temp for judging consistency
     "max_tokens": 150,
     "timeout": 30,  # seconds per request
-    "max_concurrent": 20,  # concurrent API calls (QPS=20)
+    "max_concurrent": 6,  # concurrent API calls (rate limit ~8, keep margin)
 
     # Outcome judge
     "outcome_judge_enabled": True,
@@ -171,8 +171,6 @@ def ranking_to_advantages(ranking: List[int], n: int, scale: float = 0.3) -> Lis
         List of advantage scores (one per trajectory), mean=0
     """
     advantages = [0.0] * n
-    if n <= 1:
-        return advantages
     for rank_pos, traj_idx in enumerate(ranking):
         # rank_pos 0 = best, n-1 = worst
         # Map to [-scale, +scale]

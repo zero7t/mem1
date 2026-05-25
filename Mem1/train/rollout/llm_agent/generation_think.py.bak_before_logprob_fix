@@ -264,11 +264,7 @@ class LLMGenerationManager:
         return think_ids, new_response_ids
 
     def run_llm_loop(self, gen_batch, initial_input_ids: torch.Tensor, is_validation: bool = False) -> Tuple[Dict, Dict]:
-        """Run main LLM generation loop.
-
-        If self._gen_judge is set (GenerationTimeJudge), fires LLM Judge
-        API calls as each trajectory completes for maximum overlap.
-        """
+        """Run main LLM generation loop."""
         
         """
         STEP 1: construct the original left side and right side and statistics
@@ -386,26 +382,6 @@ class LLMGenerationManager:
                 if dones[i] and "num_rounds" not in reconstruction_list[i]:
                     reconstruction_list[i]["num_rounds"] = step + 1
 
-                    # === Fire LLM Judge immediately when trajectory completes ===
-                    if hasattr(self, '_gen_judge') and self._gen_judge is not None:
-                        try:
-                            # Reconstruct full trajectory text from reconstruction_list
-                            traj_parts = []
-                            rl = reconstruction_list[i]
-                            for s in range(step + 1):
-                                if f't{s}' in rl:
-                                    traj_parts.append(self.tokenizer.decode(rl[f't{s}'], skip_special_tokens=True))
-                                if f'r{s}' in rl:
-                                    traj_parts.append(self.tokenizer.decode(rl[f'r{s}'], skip_special_tokens=True))
-                                if f'i{s}' in rl:
-                                    traj_parts.append(self.tokenizer.decode(rl[f'i{s}'], skip_special_tokens=True))
-                            # Include question context
-                            q_text = self.tokenizer.decode(rl['q'], skip_special_tokens=True) if 'q' in rl else ""
-                            full_text = q_text + " ".join(traj_parts)
-                            self._gen_judge.on_trajectory_complete(i, full_text)
-                        except Exception as e:
-                            pass  # Don't let judge errors break generation
-
             for i in range(len(kept_lengths)):
                 kept_lengths[i] = self._calculate_kept_lengths(responses_ids[i], information=False)
             
@@ -441,24 +417,6 @@ class LLMGenerationManager:
         for i in range(len(reconstruction_list)):
             if "num_rounds" not in reconstruction_list[i]:
                 reconstruction_list[i]["num_rounds"] = self.config.max_turns
-
-                # Fire judge for trajectories that exhausted all turns
-                if hasattr(self, '_gen_judge') and self._gen_judge is not None:
-                    try:
-                        traj_parts = []
-                        rl = reconstruction_list[i]
-                        for s in range(self.config.max_turns):
-                            if f't{s}' in rl:
-                                traj_parts.append(self.tokenizer.decode(rl[f't{s}'], skip_special_tokens=True))
-                            if f'r{s}' in rl:
-                                traj_parts.append(self.tokenizer.decode(rl[f'r{s}'], skip_special_tokens=True))
-                            if f'i{s}' in rl:
-                                traj_parts.append(self.tokenizer.decode(rl[f'i{s}'], skip_special_tokens=True))
-                        q_text = self.tokenizer.decode(rl['q'], skip_special_tokens=True) if 'q' in rl else ""
-                        full_text = q_text + " ".join(traj_parts)
-                        self._gen_judge.on_trajectory_complete(i, full_text)
-                    except Exception:
-                        pass
         
         meta_info['turns_stats'] = turns_stats.tolist()
         meta_info['active_mask'] = active_mask.tolist()
