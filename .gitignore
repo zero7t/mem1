@@ -1,0 +1,24 @@
+# Model weights
+*.bin
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+*.h5
+*.onnx
+*.msgpack
+
+# Core dumps
+core.*
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Large logs (outputs directory with hydra logs)
+outputs/
+
+# OS files
+.DS_Store
+Thumbs.db

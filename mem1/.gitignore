@@ -1,0 +1,34 @@
+__pycache__
+*.pyc
+*.pyo
+
+# Data & Models (large files)
+assets/models/
+assets/wiki-18/
+assets/mem1_vid.mp4
+Mem1/train/data/
+Mem1/train/logs/
+Mem1/train/outputs/
+Mem1/train/wandb/
+Mem1/train/verl.egg-info/
+Mem1/inference/distill/outputs/
+
+# Checkpoints
+verl_checkpoints/
+*.ckpt
+*.safetensors
+*.bin
+
+# Logs
+swanlog/
+
+# System
+.DS_Store
+/verl.egg-info
+
+# IDE
+.vscode/
+.idea/
+
+# Backups
+*.bak

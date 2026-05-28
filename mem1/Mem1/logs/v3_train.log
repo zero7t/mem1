@@ -1,0 +1,193 @@
+2026-05-28 03:08:24,428	INFO worker.py:2012 -- Started a local Ray instance.
+/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/worker.py:2051: FutureWarning: Tip: In future versions of Ray, Ray will no longer override accelerator visible devices env var if num_gpus=0 or num_gpus=None (default). To enable this behavior and turn off this error message, set RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO=0
+  warnings.warn(
+[36m(main_task pid=12144)[0m {'actor_rollout_ref': {'actor': {'clip_higher': 0.28,
+[36m(main_task pid=12144)[0m                                  'clip_ratio': 0.2,
+[36m(main_task pid=12144)[0m                                  'entropy_coeff': 0.001,
+[36m(main_task pid=12144)[0m                                  'fsdp_config': {'fsdp_size': -1,
+[36m(main_task pid=12144)[0m                                                  'grad_offload': False,
+[36m(main_task pid=12144)[0m                                                  'optimizer_offload': False,
+[36m(main_task pid=12144)[0m                                                  'param_offload': True,
+[36m(main_task pid=12144)[0m                                                  'wrap_policy': {'min_num_params': 0}},
+[36m(main_task pid=12144)[0m                                  'grad_clip': 1.0,
+[36m(main_task pid=12144)[0m                                  'kl_loss_coef': 0.001,
+[36m(main_task pid=12144)[0m                                  'kl_loss_type': 'low_var_kl',
+[36m(main_task pid=12144)[0m                                  'llds_lambda': 0.1,
+[36m(main_task pid=12144)[0m                                  'optim': {'lr': 2e-07,
+[36m(main_task pid=12144)[0m                                            'lr_warmup_steps_ratio': 0.02,
+[36m(main_task pid=12144)[0m                                            'min_lr_ratio': None,
+[36m(main_task pid=12144)[0m                                            'total_training_steps': -1,
+[36m(main_task pid=12144)[0m                                            'warmup_style': 'constant'},
+[36m(main_task pid=12144)[0m                                  'ppo_epochs': 1,
+[36m(main_task pid=12144)[0m                                  'ppo_max_token_len_per_gpu': 16384,
+[36m(main_task pid=12144)[0m                                  'ppo_micro_batch_size': 12,
+[36m(main_task pid=12144)[0m                                  'ppo_mini_batch_size': 384,
+[36m(main_task pid=12144)[0m                                  'shuffle': False,
+[36m(main_task pid=12144)[0m                                  'state_masking': True,
+[36m(main_task pid=12144)[0m                                  'strategy': 'fsdp',
+[36m(main_task pid=12144)[0m                                  'ulysses_sequence_parallel_size': 1,
+[36m(main_task pid=12144)[0m                                  'use_dynamic_bsz': False,
+[36m(main_task pid=12144)[0m                                  'use_kl_loss': False},
+[36m(main_task pid=12144)[0m                        'hybrid_engine': True,
+[36m(main_task pid=12144)[0m                        'model': {'enable_gradient_checkpointing': True,
+[36m(main_task pid=12144)[0m                                  'external_lib': None,
+[36m(main_task pid=12144)[0m                                  'override_config': {},
+[36m(main_task pid=12144)[0m                                  'path': '/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B',
+[36m(main_task pid=12144)[0m                                  'use_remove_padding': False},
+[36m(main_task pid=12144)[0m                        'ref': {'fsdp_config': {'fsdp_size': -1,
+[36m(main_task pid=12144)[0m                                                'param_offload': True,
+[36m(main_task pid=12144)[0m                                                'wrap_policy': {'min_num_params': 0}},
+[36m(main_task pid=12144)[0m                                'log_prob_max_token_len_per_gpu': 16384,
+[36m(main_task pid=12144)[0m                                'log_prob_micro_batch_size': 12,
+[36m(main_task pid=12144)[0m                                'log_prob_use_dynamic_bsz': False,
+[36m(main_task pid=12144)[0m                                'ulysses_sequence_parallel_size': 1},
+[36m(main_task pid=12144)[0m                        'rollout': {'do_sample': True,
+[36m(main_task pid=12144)[0m                                    'dtype': 'bfloat16',
+[36m(main_task pid=12144)[0m                                    'enforce_eager': True,
+[36m(main_task pid=12144)[0m                                    'free_cache_engine': True,
+[36m(main_task pid=12144)[0m                                    'gpu_memory_utilization': 0.4,
+[36m(main_task pid=12144)[0m                                    'ignore_eos': False,
+[36m(main_task pid=12144)[0m                                    'load_format': 'dummy_dtensor',
+[36m(main_task pid=12144)[0m                                    'log_prob_max_token_len_per_gpu': 16384,
+[36m(main_task pid=12144)[0m                                    'log_prob_micro_batch_size': 12,
+[36m(main_task pid=12144)[0m                                    'log_prob_use_dynamic_bsz': False,
+[36m(main_task pid=12144)[0m                                    'max_num_batched_tokens': 8192,
+[36m(main_task pid=12144)[0m                                    'max_num_seqs': 1024,
+[36m(main_task pid=12144)[0m                                    'n': 1,
+[36m(main_task pid=12144)[0m                                    'n_agent': 4,
+[36m(main_task pid=12144)[0m                                    'name': 'vllm',
+[36m(main_task pid=12144)[0m                                    'prompt_length': 4096,
+[36m(main_task pid=12144)[0m                                    'response_length': 500,
+[36m(main_task pid=12144)[0m                                    'temperature': 1,
+[36m(main_task pid=12144)[0m                                    'tensor_model_parallel_size': 1,
+[36m(main_task pid=12144)[0m                                    'top_k': -1,
+[36m(main_task pid=12144)[0m                                    'top_p': 0.95}},
+[36m(main_task pid=12144)[0m  'algorithm': {'adv_estimator': 'grpo',
+[36m(main_task pid=12144)[0m                'dapo_max_retries': 2,
+[36m(main_task pid=12144)[0m                'dapo_start_step': 50,
+[36m(main_task pid=12144)[0m                'gamma': 1.0,
+[36m(main_task pid=12144)[0m                'kl_ctrl': {'kl_coef': 0.001, 'type': 'fixed'},
+[36m(main_task pid=12144)[0m                'kl_penalty': 'kl',
+[36m(main_task pid=12144)[0m                'lam': 1.0,
+[36m(main_task pid=12144)[0m                'no_think_rl': False,
+[36m(main_task pid=12144)[0m                'state_masking': {'end_state_marker': '</information>',
+[36m(main_task pid=12144)[0m                                  'start_state_marker': '<information>'}},
+[36m(main_task pid=12144)[0m  'critic': {'cliprange_value': 0.5,
+[36m(main_task pid=12144)[0m             'forward_max_token_len_per_gpu': 32768,
+[36m(main_task pid=12144)[0m             'forward_micro_batch_size': 64,
+[36m(main_task pid=12144)[0m             'grad_clip': 1.0,
+[36m(main_task pid=12144)[0m             'model': {'enable_gradient_checkpointing': False,
+[36m(main_task pid=12144)[0m                       'external_lib': None,
+[36m(main_task pid=12144)[0m                       'fsdp_config': {'fsdp_size': -1,
+[36m(main_task pid=12144)[0m                                       'grad_offload': False,
+[36m(main_task pid=12144)[0m                                       'optimizer_offload': False,
+[36m(main_task pid=12144)[0m                                       'param_offload': False,
+[36m(main_task pid=12144)[0m                                       'wrap_policy': {'min_num_params': 0}},
+[36m(main_task pid=12144)[0m                       'override_config': {},
+[36m(main_task pid=12144)[0m                       'path': '~/models/deepseek-llm-7b-chat',
+[36m(main_task pid=12144)[0m                       'tokenizer_path': '/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B',
+[36m(main_task pid=12144)[0m                       'use_remove_padding': False},
+[36m(main_task pid=12144)[0m             'optim': {'lr': 1e-05,
+[36m(main_task pid=12144)[0m                       'lr_warmup_steps_ratio': 0.0,
+[36m(main_task pid=12144)[0m                       'min_lr_ratio': None,
+[36m(main_task pid=12144)[0m                       'total_training_steps': -1,
+[36m(main_task pid=12144)[0m                       'warmup_style': 'constant'},
+[36m(main_task pid=12144)[0m             'ppo_epochs': 1,
+[36m(main_task pid=12144)[0m             'ppo_max_token_len_per_gpu': 32768,
+[36m(main_task pid=12144)[0m             'ppo_micro_batch_size': 64,
+[36m(main_task pid=12144)[0m             'ppo_mini_batch_size': 384,
+[36m(main_task pid=12144)[0m             'shuffle': False,
+[36m(main_task pid=12144)[0m             'strategy': 'fsdp',
+[36m(main_task pid=12144)[0m             'ulysses_sequence_parallel_size': 1,
+[36m(main_task pid=12144)[0m             'use_dynamic_bsz': False},
+[36m(main_task pid=12144)[0m  'curriculum': {'convergence_em_thresh': 0.15,
+[36m(main_task pid=12144)[0m                 'convergence_max_step': 300,
+[36m(main_task pid=12144)[0m                 'transition_em_thresh': 0.3,
+[36m(main_task pid=12144)[0m                 'transition_max_step': 500,
+[36m(main_task pid=12144)[0m                 'warmup_format_thresh': 0.9,
+[36m(main_task pid=12144)[0m                 'warmup_max_step': 80},
+[36m(main_task pid=12144)[0m  'data': {'max_obs_length': 500,
+[36m(main_task pid=12144)[0m           'max_prompt_length': 4096,
+[36m(main_task pid=12144)[0m           'max_response_length': 500,
+[36m(main_task pid=12144)[0m           'max_start_length': 2048,
+[36m(main_task pid=12144)[0m           'prompt_key': 'prompt',
+[36m(main_task pid=12144)[0m           'return_raw_chat': False,
+[36m(main_task pid=12144)[0m           'return_raw_input_ids': False,
+[36m(main_task pid=12144)[0m           'shuffle_train_dataloader': True,
+[36m(main_task pid=12144)[0m           'tokenizer': None,
+[36m(main_task pid=12144)[0m           'train_batch_size': 96,
+[36m(main_task pid=12144)[0m           'train_data_num': None,
+[36m(main_task pid=12144)[0m           'train_files': 'data/nq_hotpotqa_train_multi_2/train.parquet',
+[36m(main_task pid=12144)[0m           'val_batch_size': 96,
+[36m(main_task pid=12144)[0m           'val_data_num': None,
+[36m(main_task pid=12144)[0m           'val_files': 'data/nq_hotpotqa_train_multi_2/test.parquet'},
+[36m(main_task pid=12144)[0m  'do_search': True,
+[36m(main_task pid=12144)[0m  'max_turns': 6,
+[36m(main_task pid=12144)[0m  'retriever': {'topk': 3, 'url': 'http://127.0.0.1:8013/retrieve'},
+[36m(main_task pid=12144)[0m  'reward': {'turn_weight_alpha': 0.3,
+[36m(main_task pid=12144)[0m             'turn_weight_beta': 0.3,
+[36m(main_task pid=12144)[0m             'turn_weight_gamma': 1.5},
+[36m(main_task pid=12144)[0m  'reward_model': {'enable': False,
+[36m(main_task pid=12144)[0m                   'forward_max_token_len_per_gpu': 32768,
+[36m(main_task pid=12144)[0m                   'max_length': None,
+[36m(main_task pid=12144)[0m                   'micro_batch_size': 64,
+[36m(main_task pid=12144)[0m                   'model': {'external_lib': None,
+[36m(main_task pid=12144)[0m                             'fsdp_config': {'min_num_params': 0,
+[36m(main_task pid=12144)[0m                                             'param_offload': False},
+[36m(main_task pid=12144)[0m                             'input_tokenizer': '/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B',
+[36m(main_task pid=12144)[0m                             'path': '~/models/FsfairX-LLaMA3-RM-v0.1',
+[36m(main_task pid=12144)[0m                             'use_remove_padding': False},
+[36m(main_task pid=12144)[0m                   'strategy': 'fsdp',
+[36m(main_task pid=12144)[0m                   'ulysses_sequence_parallel_size': 1,
+[36m(main_task pid=12144)[0m                   'use_dynamic_bsz': False},
+[36m(main_task pid=12144)[0m  'trainer': {'critic_warmup': 0,
+[36m(main_task pid=12144)[0m              'default_hdfs_dir': None,
+[36m(main_task pid=12144)[0m              'default_local_dir': 'verl_checkpoints/V3-curriculum-n4-bs96',
+[36m(main_task pid=12144)[0m              'experiment_name': 'V3-curriculum-n4-bs96',
+[36m(main_task pid=12144)[0m              'logger': ['swanlab', 'console'],
+[36m(main_task pid=12144)[0m              'n_gpus_per_node': 6,
+[36m(main_task pid=12144)[0m              'nnodes': 1,
+[36m(main_task pid=12144)[0m              'project_name': 'MEM1',
+[36m(main_task pid=12144)[0m              'save_freq': 100,
+[36m(main_task pid=12144)[0m              'test_freq': -1,
+[36m(main_task pid=12144)[0m              'total_epochs': 1,
+[36m(main_task pid=12144)[0m              'total_training_steps': 883,
+[36m(main_task pid=12144)[0m              'val_before_train': False,
+[36m(main_task pid=12144)[0m              'val_only': False}}
+Error executing job with overrides: ['data.train_files=data/nq_hotpotqa_train_multi_2/train.parquet', 'data.val_files=data/nq_hotpotqa_train_multi_2/test.parquet', 'data.train_data_num=null', 'data.val_data_num=null', 'data.train_batch_size=96', 'data.val_batch_size=96', 'data.max_prompt_length=4096', 'data.max_response_length=500', 'data.max_start_length=2048', 'data.max_obs_length=500', 'data.shuffle_train_dataloader=True', 'algorithm.adv_estimator=grpo', '+algorithm.dapo_max_retries=2', '+algorithm.dapo_start_step=50', 'actor_rollout_ref.model.path=/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B', 'actor_rollout_ref.model.enable_gradient_checkpointing=true', 'actor_rollout_ref.model.use_remove_padding=False', 'actor_rollout_ref.actor.optim.lr=2e-7', 'actor_rollout_ref.actor.optim.lr_warmup_steps_ratio=0.02', 'actor_rollout_ref.actor.use_kl_loss=false', 'actor_rollout_ref.actor.kl_loss_coef=0.001', 'actor_rollout_ref.actor.kl_loss_type=low_var_kl', 'actor_rollout_ref.actor.ppo_mini_batch_size=384', 'actor_rollout_ref.actor.ppo_micro_batch_size=12', 'actor_rollout_ref.actor.fsdp_config.param_offload=true', 'actor_rollout_ref.actor.fsdp_config.grad_offload=false', 'actor_rollout_ref.actor.fsdp_config.optimizer_offload=false', '+actor_rollout_ref.actor.llds_lambda=0.1', '+actor_rollout_ref.actor.clip_higher=0.28', 'actor_rollout_ref.actor.state_masking=true', 'actor_rollout_ref.rollout.log_prob_micro_batch_size=12', 'actor_rollout_ref.rollout.tensor_model_parallel_size=1', 'actor_rollout_ref.rollout.name=vllm', 'actor_rollout_ref.rollout.gpu_memory_utilization=0.4', 'actor_rollout_ref.rollout.n_agent=4', 'actor_rollout_ref.rollout.temperature=1', 'actor_rollout_ref.ref.log_prob_micro_batch_size=12', 'actor_rollout_ref.ref.fsdp_config.param_offload=True', 'algorithm.kl_ctrl.kl_coef=0.001', 'algorithm.no_think_rl=false', 'trainer.critic_warmup=0', "trainer.logger=['swanlab','console']", '+trainer.val_only=false', '+trainer.val_before_train=false', 'trainer.default_hdfs_dir=null', 'trainer.n_gpus_per_node=6', 'trainer.nnodes=1', 'trainer.save_freq=100', 'trainer.test_freq=-1', 'trainer.project_name=MEM1', 'trainer.experiment_name=V3-curriculum-n4-bs96', 'trainer.total_epochs=1', 'trainer.total_training_steps=883', 'trainer.default_local_dir=verl_checkpoints/V3-curriculum-n4-bs96', 'max_turns=6', 'do_search=true', 'retriever.url=http://127.0.0.1:8013/retrieve', 'retriever.topk=3', '+reward.turn_weight_alpha=0.3', '+reward.turn_weight_beta=0.3', '+reward.turn_weight_gamma=1.5', '+curriculum.warmup_format_thresh=0.9', '+curriculum.warmup_max_step=80', '+curriculum.convergence_em_thresh=0.15', '+curriculum.convergence_max_step=300', '+curriculum.transition_em_thresh=0.30', '+curriculum.transition_max_step=500']
+[36m(main_task pid=12144)[0m /root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/vllm/connections.py:8: RuntimeWarning: Failed to read commit hash:
+[36m(main_task pid=12144)[0m No module named 'vllm._version'
+[36m(main_task pid=12144)[0m   from vllm.version import __version__ as VLLM_VERSION
+Traceback (most recent call last):
+  File "/root/paddlejob/workspace/new_llm_judge_mem1/mem1/Mem1/train/grpo_v3/main_ppo_v3.py", line 388, in main
+    ray.get(main_task.remote(config))
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/auto_init_hook.py", line 22, in auto_init_wrapper
+    return fn(*args, **kwargs)
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/client_mode_hook.py", line 104, in wrapper
+    return func(*args, **kwargs)
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/worker.py", line 2961, in get
+    values, debugger_breakpoint = worker.get_objects(
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/ray/_private/worker.py", line 1026, in get_objects
+    raise value.as_instanceof_cause()
+ray.exceptions.RayTaskError(FileNotFoundError): [36mray::main_task()[39m (pid=12144, ip=10.189.86.223)
+  File "/root/paddlejob/workspace/new_llm_judge_mem1/mem1/Mem1/train/grpo_v3/main_ppo_v3.py", line 461, in main_task
+    trainer = RayPPOTrainer(
+  File "/root/paddlejob/workspace/new_llm_judge_mem1/mem1/Mem1/train/verl/trainer/ppo/ray_trainer.py", line 382, in __init__
+    self._create_dataloader()
+  File "/root/paddlejob/workspace/new_llm_judge_mem1/mem1/Mem1/train/verl/trainer/ppo/ray_trainer.py", line 396, in _create_dataloader
+    self.train_dataset = RLHFDataset(parquet_files=self.config.data.train_files,
+  File "/root/paddlejob/workspace/new_llm_judge_mem1/mem1/Mem1/train/verl/utils/dataset/rl_dataset.py", line 89, in __init__
+    self._read_files_and_tokenize()
+  File "/root/paddlejob/workspace/new_llm_judge_mem1/mem1/Mem1/train/verl/utils/dataset/rl_dataset.py", line 100, in _read_files_and_tokenize
+    dataframe = pd.read_parquet(parquet_file)
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/pandas/io/parquet.py", line 669, in read_parquet
+    return impl.read(
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/pandas/io/parquet.py", line 258, in read
+    path_or_handle, handles, filesystem = _get_path_or_handle(
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/pandas/io/parquet.py", line 141, in _get_path_or_handle
+    handles = get_handle(
+  File "/root/paddlejob/workspace/miniforge3/envs/mem1/lib/python3.9/site-packages/pandas/io/common.py", line 882, in get_handle
+    handle = open(handle, ioargs.mode)
+FileNotFoundError: [Errno 2] No such file or directory: 'data/nq_hotpotqa_train_multi_2/train.parquet'
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
