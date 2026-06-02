@@ -721,17 +721,20 @@ class LLMGenerationManager:
         return [self._passages2string(result) for result in results]
 
     def _batch_search(self, queries):
-        
+
         payload = {
             "queries": queries,
             "topk": self.config.topk,
             "return_scores": True
         }
-        try:
-            return requests.post(self.config.search_url, json=payload).json()
-        except Exception as e:
-            print(f"Error in batch_search: {e}")
-            return []
+        for attempt in range(3):
+            try:
+                resp = requests.post(self.config.search_url, json=payload, timeout=300)
+                return resp.json()
+            except Exception as e:
+                print(f"Error in batch_search (attempt {attempt+1}): {e}")
+                import time; time.sleep(2)
+        return {'result': [[] for _ in queries]}
 
     def _passages2string(self, retrieval_result):
         format_reference = ''

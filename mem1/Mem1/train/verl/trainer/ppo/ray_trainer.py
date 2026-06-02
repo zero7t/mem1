@@ -682,7 +682,19 @@ class RayPPOTrainer(object):
         """
 
         logger = self.logger
-        self.global_steps = 0
+
+        # Try to restore global_steps from checkpoint path
+        model_path = self.config.actor_rollout_ref.model.path
+        if model_path and 'global_step_' in model_path:
+            import re
+            match = re.search(r'global_step_(\d+)', model_path)
+            if match:
+                self.global_steps = int(match.group(1))
+                print(f"[Trainer] Resuming from checkpoint: global_steps={self.global_steps}")
+            else:
+                self.global_steps = 0
+        else:
+            self.global_steps = 0
         # perform validation before training
         # currently, we only support validation using the reward_function.
         if self.val_reward_fn is not None and self.config.trainer.get('val_before_train', False):
@@ -852,12 +864,12 @@ class RayPPOTrainer(object):
                                 _gt = batch.non_tensor_batch['reward_model'][_i]['ground_truth']
                                 dapo_em_scores[_i] = compute_score_em(_text, _gt, format_score=0.)
 
-                            # Detect all-same groups
+                            # Detect all-same groups (EM all same → resample)
                             n_groups = dapo_batch_size // n_agent
                             em_grouped = dapo_em_scores.reshape(n_groups, n_agent)
                             group_std = em_grouped.std(axis=1)
                             resample_groups = np.where(group_std == 0)[0]
-                            print(f"[DAPO] Step {self.global_steps}: {len(resample_groups)}/{n_groups} groups all-same")
+                            print(f"[DAPO] Step {self.global_steps}: {len(resample_groups)}/{n_groups} groups em_all_same")
 
                             # Resample loop
                             for _retry in range(dapo_max_retries):

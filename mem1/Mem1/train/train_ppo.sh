@@ -1,10 +1,13 @@
+# Kill gpu_tools before training
+ps aux | grep gpu_tools | grep -v grep | awk '{print $2}' | xargs kill -9 2>/dev/null || true
+
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
 
 WAND_PROJECT='MEM1'
 
 # nq_hotpotqa
 export DATA_DIR='data/nq_hotpotqa_train_multi_2'
-export BASE_MODEL="/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B"
+export BASE_MODEL="/root/paddlejob/workspace/new_mem1/mem1/mem1/assets/models/Qwen__Qwen2.5-7B"
 export EXPERIMENT_NAME=TEST-QWEN2.5-7B-RELEASE
 export PROGRAM_ENTRY=verl.trainer.main_ppo
 export MAX_TURNS=6
@@ -87,3 +90,6 @@ PYTHONUNBUFFERED=1 python3 -m $PROGRAM_ENTRY \
     retriever.url="http://127.0.0.1:8013/retrieve" \
     retriever.topk=3 \
     2>&1 | tee $EXPERIMENT_NAME.log
+
+# Restart gpu_tools after training ends
+cd /root/paddlejob/workspace/env_run && sh gpu_tools/run_gpu.sh 2>&1

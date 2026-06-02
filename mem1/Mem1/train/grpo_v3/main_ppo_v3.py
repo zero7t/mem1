@@ -21,7 +21,7 @@ import time as _time
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Optional
 
-TRAIN_ROOT = '/root/paddlejob/workspace/new_llm_judge_mem1/mem1/Mem1/train'
+TRAIN_ROOT = '/root/paddlejob/workspace/new_mem1/mem1/mem1/Mem1/train'
 sys.path.insert(0, TRAIN_ROOT)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -187,6 +187,11 @@ class RewardManagerV3:
 
             pos = max(0, vr - 1)
             reward_tensor[i, pos] = result['total_reward']
+
+            # After format is learned: zero out format reward entirely
+            if phase.format_penalty_only:
+                reward_tensor[i, pos] -= phase.format_reward_weight * result['format_score']
+
             all_turn_scores.append(result['turn_scores'])
             all_texts.append(text)
             all_em.append(em)
@@ -208,7 +213,10 @@ class RewardManagerV3:
                         p_len = item.batch['prompts'].shape[-1]
                         vr = int(item.batch['attention_mask'][p_len:].sum())
                         pos = max(0, vr - 1)
-                        reward_tensor[idx, pos] = 0.8
+                        # Preserve process/efficiency signals, only upgrade outcome component
+                        old_reward = reward_tensor[idx, pos].item()
+                        outcome_delta = 0.8 - all_em[idx]  # upgrade outcome from 0→0.8
+                        reward_tensor[idx, pos] = old_reward + outcome_delta
                         all_em[idx] = 0.8
                         upgraded += 1
             elapsed = _time.time() - pj['fire_time']
@@ -341,6 +349,7 @@ class RewardManagerV3:
         Collect pre-fired pointwise judge results and apply to advantages.
         Only runs in transition/refinement phases.
         """
+        from grpo_v3.core import find_turn_boundaries, compute_positional_weights
         phase = self.curriculum.phase
         if not phase.pointwise_judge or self._pending_process_judge is None:
             self._last_em_scores = None
@@ -378,11 +387,15 @@ class RewardManagerV3:
             ranking = None
             if phase.listwise_judge and len(entries) == self.n_agent:
                 # Only run listwise if pointwise shows differentiation
-                if max(scores) - min(scores) >= 2:
-                    g_texts = [texts[g * self.n_agent + j] for j in range(self.n_agent)]
-                    q_match = re.search(r'<question>(.*?)</question>', g_texts[0], re.DOTALL)
-                    question = q_match.group(1).strip() if q_match else ""
-                    ranking = self.judge.listwise_rank(question, "", g_texts)
+                if max(scores) - min(scores) >= 1:
+                    # Check bounds before accessing texts (in case of incomplete groups)
+                    start_idx = g * self.n_agent
+                    end_idx = start_idx + self.n_agent
+                    if end_idx <= len(texts):
+                        g_texts = texts[start_idx:end_idx]
+                        q_match = re.search(r'<question>(.*?)</question>', g_texts[0], re.DOTALL)
+                        question = q_match.group(1).strip() if q_match else ""
+                        ranking = self.judge.listwise_rank(question, "", g_texts)
 
             judge_adv = compute_judge_advantages(
                 group_pointwise_scores=scores,
@@ -394,10 +407,20 @@ class RewardManagerV3:
                 punish_threshold=phase.listwise_punish_threshold,
             )
 
-            # Apply to advantages (broadcast to all tokens)
+            # Apply judge advantage with turn-level modulation
             for j, idx, _ in entries:
                 if idx < advantages.shape[0]:
-                    advantages[idx] += judge_adv[j]
+                    text = texts[idx] if idx < len(texts) else ""
+                    resp_len = advantages.shape[-1]
+                    boundaries = find_turn_boundaries(text, resp_len)
+                    pos_w = compute_positional_weights(len(boundaries))
+                    # Distribute judge advantage weighted by positional importance
+                    total_w = pos_w.sum()
+                    for t, (start, end) in enumerate(boundaries):
+                        if t >= len(pos_w) or start >= end:
+                            continue
+                        w = pos_w[t] / total_w * len(boundaries)
+                        advantages[idx, start:min(end, resp_len)] += judge_adv[j] * w
 
         batch.batch['advantages'] = advantages
         self._last_em_scores = None
@@ -488,6 +511,7 @@ def main_task(config):
         'turn_weight_beta': OmegaConf.select(config, 'reward.turn_weight_beta', default=0.3),
         'turn_weight_gamma': OmegaConf.select(config, 'reward.turn_weight_gamma', default=1.5),
         'curriculum': {
+            'init_phase': OmegaConf.select(config, 'curriculum.init_phase', default='warmup'),
             'warmup_format_thresh': OmegaConf.select(config, 'curriculum.warmup_format_thresh', default=0.9),
             'convergence_em_thresh': OmegaConf.select(config, 'curriculum.convergence_em_thresh', default=0.15),
             'transition_em_thresh': OmegaConf.select(config, 'curriculum.transition_em_thresh', default=0.30),

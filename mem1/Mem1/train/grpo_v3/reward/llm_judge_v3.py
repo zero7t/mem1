@@ -153,7 +153,7 @@ class LLMJudgeV3:
             match = re.search(r'\{.*?\}', response, re.DOTALL)
             if match:
                 data = json.loads(match.group())
-                score = int(data.get("score", 3))
+                score = int(data.get("score") or 3)
                 reason = data.get("reason", "")
                 return max(1, min(5, score)), reason
         except (json.JSONDecodeError, ValueError):

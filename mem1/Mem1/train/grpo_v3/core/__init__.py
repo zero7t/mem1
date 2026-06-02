@@ -109,21 +109,40 @@ def compute_turn_weights(
 
 
 def find_turn_boundaries(response_text: str, response_length: int) -> List[Tuple[int, int]]:
-    """Map turn boundaries from text to token positions (approximate)."""
+    """
+    Map turn boundaries from text to token positions.
+    Uses segment-length-proportional mapping (weighted by char count per segment)
+    which is more accurate than uniform linear mapping for variable-density text.
+    """
     total_chars = len(response_text) if response_text else 1
     info_ends = [m.end() for m in re.finditer(r'</information>', response_text)]
 
-    boundaries = []
+    if not info_ends:
+        return [(0, response_length)]
+
+    # Compute char lengths per segment
+    segments = []
     prev = 0
     for end in info_ends:
-        tok_start = int(prev / total_chars * response_length)
-        tok_end = int(end / total_chars * response_length)
-        boundaries.append((tok_start, min(tok_end, response_length)))
+        segments.append((prev, end))
         prev = end
-
     if prev < total_chars:
-        tok_start = int(prev / total_chars * response_length)
-        boundaries.append((tok_start, response_length))
+        segments.append((prev, total_chars))
+
+    # Map proportionally: each segment gets tokens proportional to its char length
+    char_lengths = [e - s for s, e in segments]
+    total_char_len = sum(char_lengths)
+    if total_char_len == 0:
+        return [(0, response_length)]
+
+    boundaries = []
+    tok_cursor = 0
+    for i, clen in enumerate(char_lengths):
+        tok_span = int(round(clen / total_char_len * response_length))
+        if i == len(char_lengths) - 1:
+            tok_span = response_length - tok_cursor  # last segment gets remainder
+        boundaries.append((tok_cursor, min(tok_cursor + tok_span, response_length)))
+        tok_cursor += tok_span
 
     return boundaries if boundaries else [(0, response_length)]
 

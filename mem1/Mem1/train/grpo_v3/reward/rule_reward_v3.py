@@ -10,6 +10,7 @@ Plus per-turn process scores for turn-weighted advantage.
 """
 
 import re
+import math
 import string
 from typing import List, Dict, Optional, Tuple
 
@@ -87,6 +88,63 @@ def format_reward(text: str, strict: bool = True) -> float:
     return 1.0
 
 
+def format_penalty_tokens(
+    text: str,
+    response_length: int,
+    tau: float = 30.0,
+    strength: float = 0.5,
+) -> Optional[List[float]]:
+    """
+    Penalty-only format reward: returns token-level penalty vector when format is wrong.
+    Returns None if format is correct (no reward, no penalty).
+
+    Penalty uses exponential decay (recency effect): tokens closer to the error
+    position receive stronger penalty. penalty[t] = -strength * exp(-d/tau)
+    where d = error_token_pos - t.
+    """
+    thinks = re.findall(r'<think>.*?</think>', text, re.DOTALL)
+    searches = re.findall(r'<search>.*?</search>', text, re.DOTALL)
+    answers = re.findall(r'<answer>.*?</answer>', text, re.DOTALL)
+
+    # Determine error type and character position
+    error_char_pos = None
+
+    if not thinks or not searches:
+        # Missing basic structure — error at the start
+        error_char_pos = 0
+    elif len(answers) < 1:
+        # No answer tag — error at the end
+        error_char_pos = len(text) - 1
+    elif len(answers) > 8:
+        # Too many answer tags — find the 9th one
+        positions = [m.start() for m in re.finditer(r'<answer>', text)]
+        error_char_pos = positions[8] if len(positions) > 8 else len(text) - 1
+    else:
+        # Check final answer content
+        last_answer = answers[-1]
+        content = re.search(r'<answer>(.*?)</answer>', last_answer, re.DOTALL)
+        if not content or not content.group(1).strip():
+            # Empty answer — error at the last <answer> tag
+            last_pos = text.rfind('<answer>')
+            error_char_pos = last_pos if last_pos >= 0 else len(text) - 1
+
+    if error_char_pos is None:
+        # Format is correct — no penalty, no reward
+        return None
+
+    # Map character position to token position (linear approximation)
+    text_len = max(len(text), 1)
+    error_token_pos = min(int(error_char_pos / text_len * response_length), response_length - 1)
+
+    # Build exponential decay penalty vector
+    penalties = [0.0] * response_length
+    for t in range(error_token_pos + 1):
+        d = error_token_pos - t
+        penalties[t] = -strength * math.exp(-d / tau)
+
+    return penalties
+
+
 # =============================================================================
 # Efficiency Reward
 # =============================================================================
@@ -113,32 +171,38 @@ def efficiency_reward(num_turns: int, max_turns: int, is_correct: bool) -> float
 def retrieval_quality_reward(
     retrievals: List[str],
     answer_targets: List[str],
+    queries: Optional[List[str]] = None,
 ) -> float:
     """
-    Hindsight signal: did any retrieval contain the answer?
+    Query quality signal: did the model's queries target the right information?
 
-    This is NOT a strategy reward (model can't control what retriever returns),
-    but it tells the model "your query led to useful results" which is
-    a proxy for query quality.
+    Scores based on query-answer alignment (controllable by model),
+    NOT retrieval content (uncontrollable by model).
 
-    Returns: 0.3 if answer found in any retrieval, 0.0 otherwise.
+    Returns: 0.0-0.3 based on best query-answer overlap.
     """
-    if not retrievals or answer_targets is None or len(answer_targets) == 0:
+    if not queries or answer_targets is None or len(answer_targets) == 0:
         return 0.0
 
-    for retrieval in retrievals:
-        ret_norm = normalize_answer(retrieval)
-        for target in answer_targets:
-            target_norm = normalize_answer(target)
-            if target_norm in ret_norm:
-                return 0.3
-            # Partial match: >50% of significant words
-            target_words = [w for w in target_norm.split() if len(w) > 3]
-            if target_words:
-                hits = sum(1 for w in target_words if w in ret_norm)
-                if hits / len(target_words) > 0.5:
-                    return 0.2
-    return 0.0
+    target_phrases = set()
+    for tgt in answer_targets:
+        target_phrases.update(extract_key_phrases(tgt))
+    if not target_phrases:
+        return 0.0
+
+    best_score = 0.0
+    for query in queries:
+        query_phrases = extract_key_phrases(query)
+        if not query_phrases:
+            continue
+        # Bidirectional overlap: query covers target AND target covers query
+        precision = len(query_phrases & target_phrases) / len(query_phrases)
+        recall = len(query_phrases & target_phrases) / len(target_phrases)
+        if precision + recall > 0:
+            f1 = 2 * precision * recall / (precision + recall)
+            best_score = max(best_score, f1)
+
+    return 0.3 * min(best_score, 1.0)
 
 # =============================================================================
 # Per-Turn Process Scores (for turn-weighted advantage)
@@ -280,12 +344,12 @@ def compute_reward_v3(
     fmt_score = format_reward(text, strict=strict_format)
 
     # Efficiency
-    searches = re.findall(r'<search>.*?</search>', text, re.DOTALL)
+    searches = re.findall(r'<search>(.*?)</search>', text, re.DOTALL)
     eff_score = efficiency_reward(len(searches), max_turns, outcome_score > 0.5)
 
-    # Retrieval quality (hindsight)
+    # Retrieval quality (query-based)
     infos = re.findall(r'<information>(.*?)</information>', text, re.DOTALL)
-    ret_score = retrieval_quality_reward(infos, answer_targets)
+    ret_score = retrieval_quality_reward(infos, answer_targets, queries=searches)
 
     # Per-turn process scores
     turn_scores, _ = compute_per_turn_scores(text, answer_targets, outcome_score)

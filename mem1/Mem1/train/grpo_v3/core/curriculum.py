@@ -36,6 +36,7 @@ class PhaseConfig:
     listwise_scale: float = 0.0    # scale for listwise reward
     listwise_threshold: int = 4    # only reward if pointwise >= this
     listwise_punish_threshold: int = 2  # only punish if pointwise <= this
+    format_penalty_only: bool = False  # True = no format reward at all (learned already)
 
 
 # Default phase configurations
@@ -57,6 +58,7 @@ PHASES = {
         dapo_resample=True,
         pointwise_judge=False,
         listwise_judge=False,
+        format_penalty_only=True,
     ),
     'transition': PhaseConfig(
         name='transition',
@@ -67,6 +69,7 @@ PHASES = {
         pointwise_judge=True,
         listwise_judge=False,
         pointwise_scale=0.2,
+        format_penalty_only=True,
     ),
     'refinement': PhaseConfig(
         name='refinement',
@@ -80,6 +83,7 @@ PHASES = {
         listwise_scale=0.2,
         listwise_threshold=4,
         listwise_punish_threshold=2,
+        format_penalty_only=True,
     ),
 }
 
@@ -93,8 +97,11 @@ class CurriculumController:
 
     def __init__(self, config: Optional[Dict] = None):
         config = config or {}
-        self.current_phase = 'warmup'
+        init_phase = config.get('init_phase', 'warmup')
+        self.current_phase = init_phase
         self.phase_history: List[tuple] = []  # (step, phase_name)
+        if init_phase != 'warmup':
+            print(f"[Curriculum] Starting from phase: {init_phase}")
 
         # Transition thresholds (metric-based)
         self.warmup_to_convergence_format = config.get('warmup_format_thresh', 0.9)
@@ -103,6 +110,7 @@ class CurriculumController:
 
         # Hard step fallbacks (if metrics never reach threshold)
         self.warmup_max_step = config.get('warmup_max_step', 80)
+        self.warmup_min_step = config.get('warmup_min_step', 10)
         self.convergence_max_step = config.get('convergence_max_step', 300)
         self.transition_max_step = config.get('transition_max_step', 500)
 
@@ -140,9 +148,13 @@ class CurriculumController:
     def _check_transition(self, step: int) -> str:
         """Determine if phase should advance. Never goes backward."""
         if self.current_phase == 'warmup':
-            if (self._ema_format >= self.warmup_to_convergence_format
-                    or step >= self.warmup_max_step):
+            # Use recent 10-step window average, with min_step floor and max_step ceiling
+            if step >= self.warmup_max_step:
                 return 'convergence'
+            if step >= self.warmup_min_step and len(self._recent_format) >= 10:
+                recent_avg = sum(list(self._recent_format)[-10:]) / 10
+                if recent_avg >= self.warmup_to_convergence_format:
+                    return 'convergence'
 
         elif self.current_phase == 'convergence':
             if (self._ema_em >= self.convergence_to_transition_em

@@ -6,8 +6,8 @@
 pkill -f "gpu_tools/gg" 2>/dev/null
 sleep 1
 
-cd /root/paddlejob/workspace/new_llm_judge_mem1/mem1/Mem1/train
-export PATH=/root/paddlejob/workspace/miniforge3/envs/mem1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+cd /root/paddlejob/workspace/new_mem1/mem1/mem1/Mem1/train
+export PATH=/root/miniconda3/envs/mem1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5
 export VLLM_ATTENTION_BACKEND=FLASH_ATTN
 export RAY_TMPDIR=/tmp/ray-v3
@@ -37,7 +37,7 @@ python -m grpo_v3.main_ppo_v3 \
   algorithm.adv_estimator=grpo \
   +algorithm.dapo_max_retries=2 \
   +algorithm.dapo_start_step=50 \
-  actor_rollout_ref.model.path=/root/paddlejob/workspace/mem1/MEM1/assets/models/Qwen__Qwen2.5-7B \
+  actor_rollout_ref.model.path=/root/paddlejob/workspace/new_mem1/mem1/mem1/Mem1/assets/models/Qwen__Qwen2.5-7B \
   actor_rollout_ref.model.enable_gradient_checkpointing=true \
   actor_rollout_ref.model.use_remove_padding=False \
   actor_rollout_ref.actor.optim.lr=2e-7 \
