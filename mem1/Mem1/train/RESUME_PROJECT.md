@@ -405,3 +405,87 @@ w_t = 1 + α × sign(A_i) × normalize(turn_score_t)
 | 有效梯度样本比例 | ~4% | ~60% |
 | Collapse 风险 | 长程训练后 likelihood 崩溃 | LLDS-MA 持续防护 |
 | 奖励信号密度 | 终端 1 个 0/1 | 每轮多维连续信号 + 语义判断 + 排名信号 |
+
+
+
+Pointwise Judge（逐条评分）
+做了什么
+对每条轨迹独立调用 LLM，按 1-5 分 rubric 评估其搜索策略质量：
+
+
+输入: question + ground_truth_answer + 单条 trajectory 文本
+输出: {"score": 1-5, "reason": "..."}
+Rubric（评分标准）
+分数	含义
+5	每个 query 语义相关，每步都带来新信息，推理正确综合了检索结果，有清晰的全局计划
+4	query 相关，信息增益好，推理基本正确，有轻微冗余但整体递进
+3	query 相关但部分冗余（重复信息），推理引用了检索但有逻辑缺口
+2	部分 query 跑题或严重冗余（同一角度搜两次），推理与检索结果矛盾
+1	query 完全无关或全部重复搜同一个东西，没有连贯推理链
+分数 → Advantage 转换
+
+# score=3 为中性（advantage=0），线性映射到 [-scale, +scale]
+advantage = scale × (score - 3) / 2.0
+
+# scale=0.2 时：
+# score=5 → +0.2, score=4 → +0.1, score=3 → 0, score=2 → -0.1, score=1 → -0.2
+触发条件
+Transition 阶段（EM ≥ 15%）开始启用
+只对有信号差异的 group 调用（group_std > 0 或 group 平均 EM > 0.5）
+Listwise Judge（组内排名）
+做了什么
+把同一 prompt 的 n_agent 条轨迹一起发给 LLM，让它做排名：
+
+
+输入: question + answer + n 条 trajectory 并排展示
+输出: {"ranking": [best_idx, ..., worst_idx], "confidence": "high/medium/low"}
+Margin-Based Gating（门控机制）
+核心设计：不是所有排名结果都转化为 advantage。只有在 pointwise 分数确认质量差异时才生效：
+
+
+# 只奖励 rank-1，且其 pointwise ≥ 4（确实好）
+if pointwise_scores[best_idx] >= 4:
+    advantages[best_idx] = +scale
+
+# 只惩罚 rank-last，且其 pointwise ≤ 2（确实差）
+if pointwise_scores[worst_idx] <= 2:
+    advantages[worst_idx] = -scale
+
+# 其余位置（中间排名）：advantage = 0
+为什么这样设计：
+
+防止"矮子里拔将军"：全是垃圾轨迹中排第一的也不该被奖励（pointwise < 4 → 不奖）
+防止"优等生里罚末位"：全是好轨迹中排最后的不该被重罚（pointwise > 2 → 不罚）
+触发条件（两层门控）
+阶段门控：只在 Refinement 阶段（EM ≥ 30%）启用
+差异门控：只有当 group 内 pointwise 分数 max - min ≥ 1 时才调用 listwise（分数太接近说明 LLM 自己都分不清，排名不可信）
+两者的关系
+
+┌─────────────────────────────────────────────────┐
+│ Transition 阶段 (EM 15%~30%)                     │
+│                                                   │
+│  只用 Pointwise：                                 │
+│  每条轨迹独立打分 → 直接转 advantage              │
+│  advantage = 0.2 × (score - 3) / 2              │
+└─────────────────────────────────────────────────┘
+           │ EM ≥ 30%
+           ▼
+┌─────────────────────────────────────────────────┐
+│ Refinement 阶段 (EM > 30%)                       │
+│                                                   │
+│  Pointwise + Listwise 叠加：                     │
+│  advantage = pointwise_adv + listwise_adv        │
+│                                                   │
+│  Listwise 有双重门控：                            │
+│  1. pointwise max-min ≥ 1 才调用                 │
+│  2. 只有 rank-1 且 pw≥4 才奖，rank-last 且 pw≤2 才罚 │
+└─────────────────────────────────────────────────┘
+Advantage 分布到 Turn
+Judge advantage 不是均匀加到整个 response，而是按 positional weight 分布到各 turn：
+
+
+# 中间 turn（策略分歧点）获得更大权重
+pos_w = compute_positional_weights(n_turns)  # bell-curve 形状
+for t, (start, end) in enumerate(turn_boundaries):
+    advantages[idx, start:end] += judge_adv × (pos_w[t] / total_w × n_turns)
+这让 judge 信号集中作用在"关键决策步"（通常是中间轮），而不是平铺到格式化的首尾。

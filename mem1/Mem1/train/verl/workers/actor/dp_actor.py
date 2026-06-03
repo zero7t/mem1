@@ -271,7 +271,7 @@ class DataParallelPPOActor(BasePPOActor):
                 advantages = data['advantages']
 
                 clip_ratio = self.config.clip_ratio
-                entropy_coeff = self.config.entropy_coeff
+                entropy_coeff_base = self.config.entropy_coeff
 
                 # all return: (bsz, response_length)
                 entropy, log_prob = self._forward_micro_batch(micro_batch=data, temperature=temperature)
@@ -285,6 +285,18 @@ class DataParallelPPOActor(BasePPOActor):
                                                                               clip_higher=clip_higher)
                 # compute entropy loss from entropy
                 entropy_loss = verl_F.masked_mean(entropy, response_mask)
+
+                # [Adaptive Entropy] Scale up entropy_coeff when entropy drops below threshold
+                entropy_target = getattr(self.config, 'entropy_target', 0.6)
+                entropy_coeff_max = getattr(self.config, 'entropy_coeff_max', 0.05)
+                entropy_val = entropy_loss.detach().item()
+                if entropy_val < entropy_target:
+                    # Linear ramp: coeff increases as entropy drops further below target
+                    # At entropy=0, coeff = entropy_coeff_max; at entropy=target, coeff = base
+                    ratio = max(0.0, (entropy_target - entropy_val) / entropy_target)
+                    entropy_coeff = entropy_coeff_base + ratio * (entropy_coeff_max - entropy_coeff_base)
+                else:
+                    entropy_coeff = entropy_coeff_base
 
                 # compute policy loss
                 policy_loss = pg_loss - entropy_loss * entropy_coeff
@@ -320,11 +332,23 @@ class DataParallelPPOActor(BasePPOActor):
                 loss = policy_loss / self.gradient_accumulation
                 loss.backward()
 
+                # [LLD Monitor] Log likelihood statistics for detecting LLD
+                with torch.no_grad():
+                    mean_new_log_prob = (log_prob * response_mask).sum() / response_mask.sum()
+                    mean_old_log_prob = (old_log_prob * response_mask).sum() / response_mask.sum()
+                    # Per-response displacement: positive means likelihood decreased
+                    resp_disp = ((old_log_prob - log_prob) * response_mask).sum(dim=-1)
+                    num_displaced = (resp_disp > 0).sum().item()
+
                 data = {
                     'actor/entropy_loss': entropy_loss.detach().item(),
+                    'actor/entropy_coeff': entropy_coeff,
                     'actor/pg_loss': pg_loss.detach().item(),
                     'actor/pg_clipfrac': pg_clipfrac.detach().item(),
                     'actor/ppo_kl': ppo_kl.detach().item(),
+                    'actor/mean_log_prob': mean_new_log_prob.item(),
+                    'actor/mean_old_log_prob': mean_old_log_prob.item(),
+                    'actor/lld_displaced_responses': num_displaced,
                 }
                 append_to_dict(metrics, data)
 

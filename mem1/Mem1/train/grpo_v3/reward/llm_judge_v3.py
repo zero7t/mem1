@@ -76,6 +76,24 @@ Is the model's answer semantically equivalent to the expected answer? Consider t
 
 Output ONLY: "correct" or "incorrect"."""
 
+PER_TURN_PROMPT = """You are evaluating each search turn in a multi-turn question-answering trajectory.
+
+Question: {question}
+Correct Answer: {answer}
+
+Trajectory:
+{trajectory}
+
+Score EACH SEARCH TURN (1-5) on these dimensions:
+1. Query quality: Is the query well-formed and targeting useful information for answering the question?
+2. Progressive refinement: Does this query build on what was learned from previous turns? Are later queries refined using entities or facts discovered in prior retrieval results?
+3. Reasoning quality: Does the <think> block correctly synthesize prior information and guide the next search?
+4. Information utilization: Does the query leverage newly retrieved facts rather than repeating the same approach?
+5. Synthesis (final turn only): Does the final reasoning correctly integrate all retrieved evidence to form the answer?
+
+Output ONLY a JSON: {{"turn_scores": [s1, s2, ...], "reason": "<one sentence>"}}
+Each score is 1-5. Number of scores MUST equal the number of <search> tags in the trajectory."""
+
 
 class LLMJudgeV3:
     """Unified LLM Judge with pointwise scoring and listwise ranking."""
@@ -176,6 +194,44 @@ class LLMJudgeV3:
         with ThreadPoolExecutor(max_workers=self.config["max_concurrent"]) as executor:
             results = list(executor.map(_score_one, items))
         return results
+
+    # -----------------------------------------------------------------
+    # Per-Turn Judge (replaces pointwise)
+    # -----------------------------------------------------------------
+
+    def per_turn_score(self, question: str, answer: str,
+                       trajectory: str, num_turns: int) -> List[int]:
+        """Score each turn 1-5. Returns list of scores matching num_turns."""
+        if len(trajectory) > 3000:
+            trajectory = trajectory[:1500] + "\n...[truncated]...\n" + trajectory[-1500:]
+
+        prompt = PER_TURN_PROMPT.format(
+            question=question, answer=answer, trajectory=trajectory
+        )
+        response = self._call_api(prompt)
+        if not response:
+            return [3] * num_turns
+
+        try:
+            match = re.search(r'\{.*?\}', response, re.DOTALL)
+            if match:
+                data = json.loads(match.group())
+                scores = data.get("turn_scores", [])
+                if isinstance(scores, list) and len(scores) > 0:
+                    scores = [max(1, min(5, int(s))) for s in scores]
+                    # Pad or truncate to match num_turns
+                    if len(scores) >= num_turns:
+                        return scores[:num_turns]
+                    else:
+                        return scores + [3] * (num_turns - len(scores))
+        except (json.JSONDecodeError, ValueError, TypeError):
+            pass
+
+        # Fallback: try to extract numbers
+        nums = re.findall(r'[1-5]', response)
+        if len(nums) >= num_turns:
+            return [int(n) for n in nums[:num_turns]]
+        return [3] * num_turns
 
     # -----------------------------------------------------------------
     # Listwise Judge (margin-based)

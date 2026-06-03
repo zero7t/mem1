@@ -33,7 +33,6 @@ from core import apply_turn_weighted_advantage, find_turn_boundaries
 from core.curriculum import CurriculumController, PHASES
 from reward.rule_reward_v3 import compute_reward_v3, format_reward
 from reward.llm_judge_v3 import LLMJudgeV3
-from reward.judge_advantage import compute_judge_advantages
 
 
 def _select_rm_score_fn(data_source):
@@ -72,7 +71,6 @@ class RewardManagerV3:
 
         # Turn weighting params
         self.tw_alpha = config.get('turn_weight_alpha', 0.3)
-        self.tw_beta = config.get('turn_weight_beta', 0.3)
         self.tw_gamma = config.get('turn_weight_gamma', 1.5)
 
         # Storage for turn-level data
@@ -155,6 +153,9 @@ class RewardManagerV3:
         all_turn_scores = []
         all_texts = []
         all_em = []
+        all_efficiency = []
+        all_retrieval = []
+        all_retrieval_hit = []
         format_correct = 0
 
         n_total = len(data)
@@ -195,6 +196,10 @@ class RewardManagerV3:
             all_turn_scores.append(result['turn_scores'])
             all_texts.append(text)
             all_em.append(em)
+            all_efficiency.append(result['efficiency_score'])
+            all_retrieval.append(result['retrieval_score'])
+            pb = result.get('process_breakdown', {})
+            all_retrieval_hit.append(pb.get('retrieval_hit', 0.0))
             if result['format_score'] > 0:
                 format_correct += 1
 
@@ -253,6 +258,9 @@ class RewardManagerV3:
             'v3/format_rate': fmt_rate,
             'v3/mean_reward': mean_reward,
             'v3/mean_process_score': mean_process,
+            'v3/mean_efficiency': np.mean(all_efficiency) if all_efficiency else 0.0,
+            'v3/mean_retrieval_quality': np.mean(all_retrieval) if all_retrieval else 0.0,
+            'v3/process_retrieval_hit': np.mean(all_retrieval_hit) if all_retrieval_hit else 0.0,
             'v3/curriculum_phase': float(list(PHASES.keys()).index(self.curriculum.current_phase)),
             'v3/num_turns_avg': np.mean([len(ts) for ts in all_turn_scores]) if all_turn_scores else 0.0,
         }
@@ -264,7 +272,7 @@ class RewardManagerV3:
     # -----------------------------------------------------------------
 
     def _pre_fire_process_judge(self, all_texts, all_em):
-        """Fire pointwise judge API calls async to overlap with GPU compute."""
+        """Fire per-turn judge API calls async to overlap with GPU compute."""
         n_total = len(all_em)
         n_groups = n_total // self.n_agent
         em_arr = np.array(all_em)
@@ -288,22 +296,28 @@ class RewardManagerV3:
                 question = q_match.group(1).strip() if q_match else ""
                 a_match = re.findall(r'<answer>(.*?)</answer>', text, re.DOTALL)
                 answer = a_match[-1].strip() if a_match else ""
-                items.append({'question': question, 'answer': answer, 'trajectory': text})
+                searches = re.findall(r'<search>(.*?)</search>', text, re.DOTALL)
+                num_turns = max(len(searches), 1)
+                items.append({
+                    'question': question, 'answer': answer,
+                    'trajectory': text, 'num_turns': num_turns,
+                })
                 item_map.append((g, j, idx))
 
         if not items:
             return
 
         executor = ThreadPoolExecutor(max_workers=30)
-        futures = [executor.submit(self.judge.pointwise_score,
-                                   it['question'], it['answer'], it['trajectory'])
+        futures = [executor.submit(self.judge.per_turn_score,
+                                   it['question'], it['answer'],
+                                   it['trajectory'], it['num_turns'])
                    for it in items]
         self._pending_process_judge = {
             'futures': futures, 'item_map': item_map,
             'groups_to_judge': groups_to_judge, 'executor': executor,
             'fire_time': _time.time(),
         }
-        print(f"[V3 Judge] Pre-fired {len(items)} pointwise calls")
+        print(f"[V3 Judge] Pre-fired {len(items)} per-turn calls")
 
     # -----------------------------------------------------------------
     # Turn-weighted advantage (called after compute_advantage)
@@ -332,7 +346,6 @@ class RewardManagerV3:
             response_texts=response_texts,
             eos_mask=eos_mask,
             alpha=self.tw_alpha,
-            beta=self.tw_beta,
             gamma=self.tw_gamma,
         )
         batch.batch['advantages'] = weighted
@@ -341,15 +354,18 @@ class RewardManagerV3:
         return batch
 
     # -----------------------------------------------------------------
-    # Process Judge (pointwise + listwise, called after advantage)
+    # Process Judge (per-turn + listwise, called after advantage)
     # -----------------------------------------------------------------
 
     def apply_process_judge(self, batch: DataProto, step: int) -> DataProto:
         """
-        Collect pre-fired pointwise judge results and apply to advantages.
+        Collect pre-fired per-turn judge results and apply to advantages.
+        Per-turn scores merged with rule-based turn_scores for weighting.
+        Mean per-turn score used for trajectory-level advantage adjustment.
         Only runs in transition/refinement phases.
         """
-        from grpo_v3.core import find_turn_boundaries, compute_positional_weights
+        from grpo_v3.core import find_turn_boundaries, compute_turn_weights
+        from reward.judge_advantage import per_turn_to_advantage, listwise_to_advantage_margin
         phase = self.curriculum.phase
         if not phase.pointwise_judge or self._pending_process_judge is None:
             self._last_em_scores = None
@@ -358,37 +374,36 @@ class RewardManagerV3:
         pj = self._pending_process_judge
         self._pending_process_judge = None
 
-        # Collect futures (should already be done since they overlapped with GPU work)
-        pw_results = [f.result() for f in pj['futures']]
+        # Collect per-turn judge results
+        pt_results = [f.result() for f in pj['futures']]
         pj['executor'].shutdown(wait=False)
         elapsed = _time.time() - pj['fire_time']
-        print(f"[V3 Judge] Pointwise collected: {len(pw_results)} items, {elapsed:.1f}s (async)")
+        print(f"[V3 Judge] Per-turn collected: {len(pt_results)} items, {elapsed:.1f}s (async)")
 
         item_map = pj['item_map']
         texts = self._last_texts or []
+        rule_turn_scores = self._last_turn_scores or []
 
-        # Organize scores by group
-        group_scores = {}
-        for (g, j, idx), (score, reason) in zip(item_map, pw_results):
-            if g not in group_scores:
-                group_scores[g] = []
-            group_scores[g].append((j, idx, score))
+        # Organize per-turn scores by group
+        group_data = {}
+        for (g, j, idx), scores in zip(item_map, pt_results):
+            if g not in group_data:
+                group_data[g] = []
+            mean_score = np.mean(scores) if scores else 3.0
+            group_data[g].append((j, idx, scores, mean_score))
 
-        # Compute advantages per group
         advantages = batch.batch['advantages']
         resp_len = advantages.shape[-1]
+        all_means = []
 
-        for g, entries in group_scores.items():
-            scores = [0] * self.n_agent
-            for j, idx, s in entries:
-                scores[j] = s
+        for g, entries in group_data.items():
+            # Compute group mean scores for listwise trigger
+            group_means = [mean_s for _, _, _, mean_s in entries]
 
             # Listwise (only in refinement phase)
             ranking = None
             if phase.listwise_judge and len(entries) == self.n_agent:
-                # Only run listwise if pointwise shows differentiation
-                if max(scores) - min(scores) >= 1:
-                    # Check bounds before accessing texts (in case of incomplete groups)
+                if max(group_means) - min(group_means) >= 1:
                     start_idx = g * self.n_agent
                     end_idx = start_idx + self.n_agent
                     if end_idx <= len(texts):
@@ -397,42 +412,81 @@ class RewardManagerV3:
                         question = q_match.group(1).strip() if q_match else ""
                         ranking = self.judge.listwise_rank(question, "", g_texts)
 
-            judge_adv = compute_judge_advantages(
-                group_pointwise_scores=scores,
-                group_ranking=ranking,
-                pointwise_scale=phase.pointwise_scale,
-                listwise_scale=phase.listwise_scale,
-                use_listwise=phase.listwise_judge,
-                reward_threshold=phase.listwise_threshold,
-                punish_threshold=phase.listwise_punish_threshold,
-            )
+            for j, idx, llm_turn_scores, mean_s in entries:
+                if idx >= advantages.shape[0]:
+                    continue
+                all_means.append(mean_s)
 
-            # Apply judge advantage with turn-level modulation
-            for j, idx, _ in entries:
-                if idx < advantages.shape[0]:
-                    text = texts[idx] if idx < len(texts) else ""
-                    resp_len = advantages.shape[-1]
-                    boundaries = find_turn_boundaries(text, resp_len)
-                    pos_w = compute_positional_weights(len(boundaries))
-                    # Distribute judge advantage weighted by positional importance
-                    total_w = pos_w.sum()
+                # 1. Merge rule + LLM per-turn scores for turn weighting
+                rule_scores = rule_turn_scores[idx] if idx < len(rule_turn_scores) else []
+                n_turns = max(len(rule_scores), len(llm_turn_scores))
+                combined = []
+                for t in range(n_turns):
+                    r = rule_scores[t] if t < len(rule_scores) else 0.0
+                    l = (llm_turn_scores[t] - 1) / 4.0 if t < len(llm_turn_scores) else 0.5
+                    combined.append(r + l * phase.pointwise_scale)
+
+                # 2. Recompute turn weights with combined scores
+                text = texts[idx] if idx < len(texts) else ""
+                boundaries = find_turn_boundaries(text, resp_len)
+                traj_adv_sum = advantages[idx].sum().item()
+                if abs(traj_adv_sum) > 1e-8 and len(combined) >= 2:
+                    sign_a = 1.0 if traj_adv_sum > 0 else -1.0
+                    weights = compute_turn_weights(combined, self.tw_alpha, self.tw_gamma, sign_a)
+                    # Correct normalization: distribute total advantage by turn weight,
+                    # then divide evenly among tokens within each turn.
+                    # This preserves traj_adv_sum while giving high-quality turns more signal.
+                    weight_sum = sum(
+                        weights[t] for t, (s, e) in enumerate(boundaries)
+                        if t < len(weights) and s < min(e, resp_len)
+                    )
                     for t, (start, end) in enumerate(boundaries):
-                        if t >= len(pos_w) or start >= end:
+                        if t >= len(weights) or start >= end:
                             continue
-                        w = pos_w[t] / total_w * len(boundaries)
-                        advantages[idx, start:min(end, resp_len)] += judge_adv[j] * w
+                        end = min(end, resp_len)
+                        num_tokens_t = end - start
+                        # turn_budget = traj_adv_sum * weight_t / weight_sum
+                        # per_token = turn_budget / num_tokens_t
+                        per_token_adv = traj_adv_sum * weights[t] / (weight_sum * num_tokens_t)
+                        advantages[idx, start:end] = per_token_adv
+
+                # 3. Trajectory-level additive adjustment from per-turn mean
+                traj_adj = per_turn_to_advantage(mean_s, scale=phase.pointwise_scale)
+                for start, end in boundaries:
+                    if start >= end:
+                        continue
+                    advantages[idx, start:min(end, resp_len)] += traj_adj
+
+            # 4. Listwise adjustment
+            if ranking is not None:
+                for j, idx, _, mean_s in entries:
+                    if idx >= advantages.shape[0]:
+                        continue
+                    rank_pos = ranking.index(j) if j in ranking else len(ranking) - 1
+                    listwise_adj = 0.0
+                    if rank_pos == 0 and mean_s >= 4:
+                        listwise_adj = phase.listwise_scale
+                    elif rank_pos == len(ranking) - 1 and mean_s <= 2:
+                        listwise_adj = -phase.listwise_scale
+                    if listwise_adj != 0:
+                        text = texts[idx] if idx < len(texts) else ""
+                        boundaries = find_turn_boundaries(text, resp_len)
+                        for start, end in boundaries:
+                            if start >= end:
+                                continue
+                            advantages[idx, start:min(end, resp_len)] += listwise_adj
 
         batch.batch['advantages'] = advantages
         self._last_em_scores = None
+        self._last_turn_scores = None
 
         # Log judge metrics
-        all_pw = [s for entries in group_scores.values() for _, _, s in entries]
-        if all_pw:
+        if all_means:
             self._step_metrics.update({
-                'v3/judge_pointwise_mean': np.mean(all_pw),
-                'v3/judge_pointwise_max': float(max(all_pw)),
-                'v3/judge_pointwise_min': float(min(all_pw)),
-                'v3/judge_groups_scored': len(group_scores),
+                'v3/judge_per_turn_mean': np.mean(all_means),
+                'v3/judge_per_turn_max': float(max(all_means)),
+                'v3/judge_per_turn_min': float(min(all_means)),
+                'v3/judge_groups_scored': len(group_data),
             })
 
         return batch
@@ -508,7 +562,6 @@ def main_task(config):
         'max_turns': OmegaConf.select(config, 'max_turns', default=6),
         'n_agent': config.actor_rollout_ref.rollout.n_agent,
         'turn_weight_alpha': OmegaConf.select(config, 'reward.turn_weight_alpha', default=0.3),
-        'turn_weight_beta': OmegaConf.select(config, 'reward.turn_weight_beta', default=0.3),
         'turn_weight_gamma': OmegaConf.select(config, 'reward.turn_weight_gamma', default=1.5),
         'curriculum': {
             'init_phase': OmegaConf.select(config, 'curriculum.init_phase', default='warmup'),
@@ -540,7 +593,7 @@ def main_task(config):
 
     print("[V3] Curriculum GRPO initialized.")
     print(f"[V3] Turn-weighted advantage: alpha={reward_config['turn_weight_alpha']}, "
-          f"beta={reward_config['turn_weight_beta']}, gamma={reward_config['turn_weight_gamma']}")
+          f"gamma={reward_config['turn_weight_gamma']}")
     print(f"[V3] Phase transitions: warmup→convergence@{reward_config['curriculum']['warmup_max_step']}, "
           f"convergence→transition@EM>{reward_config['curriculum']['convergence_em_thresh']}")
     print("[V3] NOTE: ray_trainer.py must call:")

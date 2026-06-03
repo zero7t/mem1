@@ -407,11 +407,15 @@ class RayPPOTrainer(object):
                 self.train_dataset.dataframe = self.train_dataset.dataframe.sample(self.config.data.train_data_num, random_state=42)
         print(f"filtered training dataset size: {len(self.train_dataset.dataframe)}")
 
+        # Fixed seed for reproducible shuffle order across resumes
+        _dl_generator = torch.Generator()
+        _dl_generator.manual_seed(42)
         self.train_dataloader = DataLoader(dataset=self.train_dataset,
                                            batch_size=self.config.data.train_batch_size,
                                            shuffle=self.config.data.shuffle_train_dataloader,
                                            drop_last=True,
-                                           collate_fn=collate_fn)
+                                           collate_fn=collate_fn,
+                                           generator=_dl_generator)
 
         self.val_dataset = RLHFDataset(parquet_files=self.config.data.val_files,
                                        tokenizer=self.tokenizer,
@@ -657,6 +661,13 @@ class RayPPOTrainer(object):
                 self.config.trainer.default_hdfs_dir, 'critic')
             self.critic_wg.save_checkpoint(critic_local_path, critic_remote_path)
 
+        # Save dataloader state for resume
+        import json
+        state_path = os.path.join(self.config.trainer.default_local_dir, 'dataloader_state.json')
+        with open(state_path, 'w') as f:
+            json.dump({'global_steps': self.global_steps, 'batch_index': self._batch_index}, f)
+        print(f"[Trainer] Saved dataloader state: step={self.global_steps}, batch_index={self._batch_index}")
+
     def _balance_batch(self, batch: DataProto, metrics, logging_prefix='global_seqlen'):
         """Reorder the data on single controller such that each dp rank gets similar total tokens"""
         attention_mask = batch.batch['attention_mask']
@@ -727,9 +738,28 @@ class RayPPOTrainer(object):
             config=gen_config,
         )
 
+        # Determine how many batches to skip on resume
+        self._batch_index = 0
+        _skip_batches = 0
+        if self.global_steps > 1:
+            import json
+            _state_path = os.path.join(self.config.trainer.default_local_dir, 'dataloader_state.json')
+            if os.path.exists(_state_path):
+                with open(_state_path) as f:
+                    _dl_state = json.load(f)
+                _skip_batches = _dl_state.get('batch_index', 0)
+                print(f"[Trainer] Will skip {_skip_batches} batches (resume from batch_index={_skip_batches})")
+            else:
+                # Fallback: estimate from global_steps (1 step = 1 batch)
+                _skip_batches = self.global_steps - 1
+                print(f"[Trainer] No dataloader_state.json, skipping {_skip_batches} batches by step count")
+
         # start training loop
         for epoch in range(self.config.trainer.total_epochs):
             for batch_dict in self.train_dataloader:
+                self._batch_index += 1
+                if self._batch_index <= _skip_batches:
+                    continue
                 print(f'epoch {epoch}, step {self.global_steps}')
                 metrics = {}
                 timing_raw = {}
@@ -1067,6 +1097,9 @@ class RayPPOTrainer(object):
                         # Process judge advantage adjustment (V3)
                         if hasattr(self.reward_fn, 'apply_process_judge'):
                             batch = self.reward_fn.apply_process_judge(batch, self.global_steps)
+                            # Collect judge metrics (added after apply_process_judge updates _step_metrics)
+                            if hasattr(self.reward_fn, '_step_metrics') and self.reward_fn._step_metrics:
+                                metrics.update(self.reward_fn._step_metrics)
 
                     # update critic
                     if self.use_critic:

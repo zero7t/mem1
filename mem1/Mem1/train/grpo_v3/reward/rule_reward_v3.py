@@ -42,6 +42,32 @@ def compute_token_overlap(a: str, b: str) -> float:
     return len(ta & tb) / len(ta | tb)
 
 
+def _retrieval_hit(retrieval_text: str, answer_targets: List[str]) -> float:
+    """
+    Per-turn retrieval hit. Each answer target matched as a complete entity.
+    Substring match → 1.0, else token recall > 0.6 → [0.1, 0.5].
+    """
+    if not retrieval_text or not answer_targets:
+        return 0.0
+    norm_ret = normalize_answer(retrieval_text)
+    ret_tokens = set(norm_ret.split())
+    best_score = 0.0
+    for target in answer_targets:
+        norm_target = normalize_answer(target)
+        if not norm_target:
+            continue
+        if norm_target in norm_ret:
+            return 1.0
+        target_tokens = set(norm_target.split())
+        if not target_tokens or not ret_tokens:
+            continue
+        recall = len(target_tokens & ret_tokens) / len(target_tokens)
+        if recall > 0.6:
+            score = 0.1 + 0.4 * (recall - 0.6) / 0.4
+            best_score = max(best_score, score)
+    return best_score
+
+
 # =============================================================================
 # Format Reward
 # =============================================================================
@@ -174,35 +200,12 @@ def retrieval_quality_reward(
     queries: Optional[List[str]] = None,
 ) -> float:
     """
-    Query quality signal: did the model's queries target the right information?
-
-    Scores based on query-answer alignment (controllable by model),
-    NOT retrieval content (uncontrollable by model).
-
-    Returns: 0.0-0.3 based on best query-answer overlap.
+    Average retrieval hit across turns × 0.3.
     """
-    if not queries or answer_targets is None or len(answer_targets) == 0:
+    if not retrievals or not answer_targets:
         return 0.0
-
-    target_phrases = set()
-    for tgt in answer_targets:
-        target_phrases.update(extract_key_phrases(tgt))
-    if not target_phrases:
-        return 0.0
-
-    best_score = 0.0
-    for query in queries:
-        query_phrases = extract_key_phrases(query)
-        if not query_phrases:
-            continue
-        # Bidirectional overlap: query covers target AND target covers query
-        precision = len(query_phrases & target_phrases) / len(query_phrases)
-        recall = len(query_phrases & target_phrases) / len(target_phrases)
-        if precision + recall > 0:
-            f1 = 2 * precision * recall / (precision + recall)
-            best_score = max(best_score, f1)
-
-    return 0.3 * min(best_score, 1.0)
+    total = sum(_retrieval_hit(r, answer_targets) for r in retrievals)
+    return 0.3 * total / len(retrievals)
 
 # =============================================================================
 # Per-Turn Process Scores (for turn-weighted advantage)
@@ -214,103 +217,50 @@ def compute_per_turn_scores(
     outcome_score: float,
 ) -> Tuple[List[float], Dict]:
     """
-    Compute per-turn process scores for turn-weighted advantage.
-
-    Dimensions per turn:
-    - Query relevance: does query target missing info?
-    - Information gain: does retrieval add new relevant content?
-    - Progressive refinement: does query build on previous retrieval?
-
-    Returns:
-        turn_scores: List[float] per turn
-        metadata: dict with breakdown
+    Compute per-turn process scores based on incremental retrieval hit.
+    Only gives credit for newly covered answer targets (no repeat credit).
     """
-    thinks = re.findall(r'<think>(.*?)</think>', text, re.DOTALL)
-    searches = re.findall(r'<search>(.*?)</search>', text, re.DOTALL)
     infos = re.findall(r'<information>(.*?)</information>', text, re.DOTALL)
-
+    searches = re.findall(r'<search>(.*?)</search>', text, re.DOTALL)
     num_turns = max(len(searches), 1)
+
     turn_scores = []
-    all_prev_phrases = set()
+    total_hit = 0.0
+    covered_targets = set()  # track which targets already found
 
     for t in range(num_turns):
-        score = 0.0
-        query = searches[t].strip() if t < len(searches) else ""
         retrieval = infos[t].strip() if t < len(infos) else ""
-        think = thinks[t].strip() if t < len(thinks) else ""
-
-        # 1. Query relevance: overlap with question keywords
-        if query and len(answer_targets) > 0:
-            target_phrases = set()
-            for tgt in answer_targets:
-                target_phrases.update(extract_key_phrases(tgt))
-            query_phrases = extract_key_phrases(query)
-            if target_phrases:
-                relevance = len(query_phrases & target_phrases) / max(len(target_phrases), 1)
-                score += 0.3 * min(relevance, 1.0)
-
-        # 2. Query irrelevance penalty: if query has zero overlap with
-        #    both the question (from first think) and previous retrievals,
-        #    it's likely random/off-topic
-        if query and t > 0:
-            # Check overlap with question (approximate from thinks[0])
-            question_phrases = extract_key_phrases(thinks[0]) if thinks else set()
-            query_phrases = extract_key_phrases(query)
-            # Check overlap with all accumulated context
-            context_phrases = question_phrases | all_prev_phrases
-            if context_phrases and query_phrases:
-                context_overlap = len(query_phrases & context_phrases) / len(query_phrases)
-                if context_overlap < 0.1:
-                    score -= 0.25  # Completely irrelevant query
-
-        # 3. Information gain: new phrases vs previous
-        if retrieval:
-            current_phrases = extract_key_phrases(retrieval)
-            new_phrases = current_phrases - all_prev_phrases
-            if current_phrases:
-                novelty_ratio = len(new_phrases) / len(current_phrases)
-                if novelty_ratio < 0.1:
-                    score -= 0.2  # Redundant retrieval
-                else:
-                    score += 0.2 * novelty_ratio
-            all_prev_phrases.update(current_phrases)
-
-        # 4. Progressive refinement: query uses info from previous retrieval
-        if t > 0 and query:
-            prev_retrieval = infos[t-1].strip() if t-1 < len(infos) else ""
-            prev_query = searches[t-1].strip() if t-1 < len(searches) else ""
-            if prev_retrieval:
-                prev_ret_phrases = extract_key_phrases(prev_retrieval)
-                prev_q_phrases = extract_key_phrases(prev_query)
-                curr_q_phrases = extract_key_phrases(query)
-                # New phrases from prev retrieval used in current query
-                refinement = curr_q_phrases & prev_ret_phrases - prev_q_phrases
-                if refinement:
-                    score += 0.15
-
+        score = 0.0
+        if retrieval and answer_targets:
+            norm_ret = normalize_answer(retrieval)
+            ret_tokens = set(norm_ret.split())
+            for i, target in enumerate(answer_targets):
+                if i in covered_targets:
+                    continue
+                norm_target = normalize_answer(target)
+                if not norm_target:
+                    continue
+                # Substring match
+                if norm_target in norm_ret:
+                    score = 1.0
+                    covered_targets.add(i)
+                    break
+                # Recall fallback
+                target_tokens = set(norm_target.split())
+                if target_tokens and ret_tokens:
+                    recall = len(target_tokens & ret_tokens) / len(target_tokens)
+                    if recall > 0.6:
+                        s = 0.1 + 0.4 * (recall - 0.6) / 0.4
+                        if s > score:
+                            score = s
+                            covered_targets.add(i)
         turn_scores.append(score)
+        total_hit += score
 
-    # 5. Final-turn reasoning score: does the last think block reference
-    #    information from retrievals? (synthesis quality)
-    if thinks and infos:
-        final_think = thinks[-1].strip() if thinks else ""
-        if final_think and len(final_think) > 20:
-            final_phrases = extract_key_phrases(final_think)
-            # Check if final reasoning references retrieval content
-            all_info_phrases = set()
-            for info in infos:
-                all_info_phrases.update(extract_key_phrases(info))
-            if final_phrases and all_info_phrases:
-                synthesis = len(final_phrases & all_info_phrases) / max(len(final_phrases), 1)
-                # Append as additional score for the last turn
-                # (or add to existing last turn if it exists)
-                synthesis_score = 0.2 * min(synthesis, 1.0)
-                if turn_scores:
-                    turn_scores[-1] += synthesis_score
-                else:
-                    turn_scores.append(synthesis_score)
-
-    return turn_scores, {'num_turns': num_turns}
+    return turn_scores, {
+        'num_turns': num_turns,
+        'retrieval_hit': total_hit,
+    }
 
 
 # =============================================================================
@@ -352,7 +302,7 @@ def compute_reward_v3(
     ret_score = retrieval_quality_reward(infos, answer_targets, queries=searches)
 
     # Per-turn process scores
-    turn_scores, _ = compute_per_turn_scores(text, answer_targets, outcome_score)
+    turn_scores, turn_meta = compute_per_turn_scores(text, answer_targets, outcome_score)
 
     # Outcome-gated process reward
     process_total = sum(turn_scores) * phase_config.lambda_process
@@ -376,4 +326,5 @@ def compute_reward_v3(
         'efficiency_score': eff_score,
         'retrieval_score': ret_score,
         'process_total': process_total,
+        'process_breakdown': turn_meta,
     }

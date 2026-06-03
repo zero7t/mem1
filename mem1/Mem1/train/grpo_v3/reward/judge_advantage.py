@@ -119,3 +119,11 @@ def compute_judge_advantages(
 
     # Sum both signals
     return [p + l for p, l in zip(pw_adv, lw_adv)]
+
+
+def per_turn_to_advantage(mean_score: float, scale: float = 0.2) -> float:
+    """
+    Map per-turn LLM scores mean to trajectory-level advantage adjustment.
+    Score 3 = neutral, score 5 → +scale, score 1 → -scale.
+    """
+    return scale * (mean_score - 3) / 2.0

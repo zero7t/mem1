@@ -62,7 +62,7 @@ PHASES = {
     ),
     'transition': PhaseConfig(
         name='transition',
-        lambda_process=0.3,
+        lambda_process=0.6,
         outcome_gate=0.6,
         format_reward_weight=0.1,
         dapo_resample=True,
@@ -73,7 +73,7 @@ PHASES = {
     ),
     'refinement': PhaseConfig(
         name='refinement',
-        lambda_process=0.15,
+        lambda_process=0.4,
         outcome_gate=0.8,
         format_reward_weight=0.05,
         dapo_resample=True,
@@ -116,8 +116,8 @@ class CurriculumController:
 
         # EMA tracking
         self._ema_alpha = config.get('ema_alpha', 0.05)
-        self._ema_em = 0.0
-        self._ema_format = 0.0
+        self._ema_em = config.get('ema_em_init', 0.0)
+        self._ema_format = config.get('ema_format_init', 0.0)
         self._ema_f1 = 0.0
         self._step_count = 0
 

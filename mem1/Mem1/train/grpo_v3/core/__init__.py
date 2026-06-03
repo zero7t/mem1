@@ -83,29 +83,19 @@ def compute_quality_scores(turn_scores: List[float], gamma: float = 1.5) -> np.n
 def compute_turn_weights(
     turn_scores: List[float],
     alpha: float = 0.3,
-    beta: float = 0.3,
     gamma: float = 1.5,
     sign_a: float = 1.0,
 ) -> np.ndarray:
     """
-    Combined turn weight: positional prior × quality score × sign alignment.
+    Turn weight based purely on quality score (no positional prior).
 
-    w(t) = 1 + α · sign(A) · w_pos(t) · q(t)
-
-    Sign alignment ensures:
-    - Winning traj + good turn → amplified positive
-    - Winning traj + bad turn → dampened positive
-    - Losing traj + good turn → PROTECTED (less negative)
-    - Losing traj + bad turn → amplified negative
+    w(t) = 1 + α · sign(A) · quality(t)
     """
     n = len(turn_scores)
     if n <= 1:
         return np.array([1.0])
-
-    pos_weights = compute_positional_weights(n, beta)
     quality = compute_quality_scores(turn_scores, gamma)
-    weights = 1.0 + alpha * sign_a * pos_weights * quality
-    return weights
+    return 1.0 + alpha * sign_a * quality
 
 
 def find_turn_boundaries(response_text: str, response_length: int) -> List[Tuple[int, int]]:
@@ -153,7 +143,6 @@ def apply_turn_weighted_advantage(
     response_texts: List[str],
     eos_mask: torch.Tensor,
     alpha: float = 0.3,
-    beta: float = 0.3,
     gamma: float = 1.5,
 ) -> torch.Tensor:
     """
@@ -164,7 +153,7 @@ def apply_turn_weighted_advantage(
         turn_scores_batch: per-sample list of per-turn process scores
         response_texts: decoded response texts
         eos_mask: (bs, response_length)
-        alpha, beta, gamma: weight parameters
+        alpha, gamma: weight parameters
 
     Returns:
         weighted_advantages: (bs, response_length)
@@ -184,14 +173,25 @@ def apply_turn_weighted_advantage(
         sign_a = 1.0 if traj_adv_sum > 0 else -1.0
         text = response_texts[i] if i < len(response_texts) else ""
         boundaries = find_turn_boundaries(text, resp_len)
-        weights = compute_turn_weights(scores, alpha, beta, gamma, sign_a)
+        weights = compute_turn_weights(scores, alpha, gamma, sign_a)
 
+        # Distribute total advantage by turn weight, preserving total.
+        # turn_budget_t = traj_adv_sum * weight_t / weight_sum
+        # per_token_t = turn_budget_t / num_tokens_t
+        weight_sum = sum(
+            weights[t] for t, (s, e) in enumerate(boundaries)
+            if t < len(weights) and s < min(e, resp_len)
+        )
+        if weight_sum < 1e-8:
+            continue
         for t, (start, end) in enumerate(boundaries):
             if t >= len(weights):
                 break
             end = min(end, resp_len)
             if start >= end:
                 continue
-            weighted[i, start:end] = advantages[i, start:end] * weights[t]
+            num_tokens_t = end - start
+            per_token_adv = traj_adv_sum * weights[t] / (weight_sum * num_tokens_t)
+            weighted[i, start:end] = per_token_adv
 
     return weighted * eos_mask
