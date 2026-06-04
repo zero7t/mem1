@@ -313,6 +313,32 @@ class ActorRolloutRefWorker(Worker):
             # get the original unwrapped module
             self.actor_module = self.actor_module_fsdp._fsdp_wrapped_module
 
+            # Load optimizer state from checkpoint if available
+            if self._is_actor and self.actor_optimizer is not None:
+                optim_path = os.path.join(self.config.model.path, 'optimizer.pt')
+                if os.path.exists(optim_path):
+                    from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType, FullStateDictConfig, FullOptimStateDictConfig
+                    print(f'[Resume] Loading optimizer state from {optim_path}')
+                    optim_state = torch.load(optim_path, map_location='cpu')
+                    cfg = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
+                    optim_cfg = FullOptimStateDictConfig(offload_to_cpu=True, rank0_only=True)
+                    with FSDP.state_dict_type(self.actor_module_fsdp, StateDictType.FULL_STATE_DICT, cfg, optim_cfg):
+                        optim_state_to_load = FSDP.optim_state_dict_to_load(
+                            model=self.actor_module_fsdp,
+                            optim=self.actor_optimizer,
+                            optim_state_dict=optim_state
+                        )
+                        self.actor_optimizer.load_state_dict(optim_state_to_load)
+                    log_gpu_memory_usage('After loading optimizer state', logger=logger)
+                    # Load lr_scheduler state if available
+                    scheduler_path = os.path.join(self.config.model.path, 'scheduler.pt')
+                    if os.path.exists(scheduler_path) and self.actor_lr_scheduler is not None:
+                        scheduler_state = torch.load(scheduler_path, map_location='cpu')
+                        self.actor_lr_scheduler.load_state_dict(scheduler_state)
+                        print(f'[Resume] Loaded lr_scheduler state from {scheduler_path}')
+                else:
+                    print(f'[Resume] No optimizer state found at {optim_path}, starting fresh')
+
             if self._is_offload_param:
                 # param is require during state_dict in sharding manager
                 offload_fsdp_grad(module=self.actor_module_fsdp)
@@ -542,6 +568,21 @@ class ActorRolloutRefWorker(Worker):
                 print(f'Uploading actor checkpoint to {hdfs_path}')
                 hdfs_io.makedirs(hdfs_path, exist_ok=True)
                 hdfs_io.copy(src=local_path, dst=hdfs_path)
+
+        # Save optimizer and lr_scheduler state for resume
+        if self.actor_optimizer is not None:
+            from torch.distributed.fsdp import FullOptimStateDictConfig
+            optim_cfg = FullOptimStateDictConfig(offload_to_cpu=True, rank0_only=True)
+            with FSDP.state_dict_type(self.actor.actor_module, StateDictType.FULL_STATE_DICT, cfg, optim_cfg):
+                optim_state = FSDP.optim_state_dict(self.actor.actor_module, self.actor_optimizer)
+            if self.rank == 0:
+                optim_path = os.path.join(local_path, 'optimizer.pt')
+                torch.save(optim_state, optim_path)
+                print(f'Saved optimizer state to {optim_path}')
+                if self.actor_lr_scheduler is not None:
+                    scheduler_path = os.path.join(local_path, 'scheduler.pt')
+                    torch.save(self.actor_lr_scheduler.state_dict(), scheduler_path)
+                    print(f'Saved lr_scheduler state to {scheduler_path}')
 
         torch.distributed.barrier()
         if self._is_offload_param:

@@ -313,20 +313,24 @@ class DataParallelPPOActor(BasePPOActor):
                     metrics['actor/kl_loss'] = kl_loss.detach().item()
                     metrics['actor/kl_coef'] = self.config.kl_loss_coef
 
-                # [LLDS-MA] Likelihood-preserving regularization
+                # [LLDS Action-Level] Likelihood-preserving regularization
                 if llds_lambda > 0:
+                    # Pass loss_mask for action-level gating (identifies action boundaries)
+                    action_loss_mask = data['loss_mask'] if self.config.state_masking else None
                     llds_loss, llds_metrics = core_algos.compute_llds_loss(
                         old_log_probs=old_log_prob,
                         new_log_probs=log_prob,
                         eos_mask=response_mask,
                         advantages=advantages,
-                        answer_mask=None,  # No explicit answer_mask available here
-                        mask_answer=False  # Will use full response for now
+                        loss_mask=action_loss_mask,
+                        answer_mask=None,
+                        mask_answer=False
                     )
                     policy_loss = policy_loss + llds_lambda * llds_loss
                     append_to_dict(metrics, {
-                        'llds/loss': llds_loss.detach().item(),
-                        'llds/num_active': llds_metrics['llds/num_active'],
+                        'llds/loss': llds_metrics['llds/loss'],
+                        'llds/num_active_actions': llds_metrics['llds/num_active_actions'],
+                        'llds/total_actions': llds_metrics['llds/total_actions'],
                     })
 
                 loss = policy_loss / self.gradient_accumulation
@@ -358,7 +362,6 @@ class DataParallelPPOActor(BasePPOActor):
         self.actor_optimizer.zero_grad()
 
         # Log peak GPU memory
-        import torch
         if torch.cuda.is_available():
             peak_mem_gb = torch.cuda.max_memory_allocated() / (1024**3)
             current_mem_gb = torch.cuda.memory_allocated() / (1024**3)

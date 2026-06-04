@@ -287,14 +287,19 @@ def compute_llds_loss(old_log_probs: torch.Tensor,
                       new_log_probs: torch.Tensor,
                       eos_mask: torch.Tensor,
                       advantages: torch.Tensor,
+                      loss_mask: torch.Tensor = None,
                       answer_mask: torch.Tensor = None,
                       mask_answer: bool = True):
     """
-    Compute LLDS(-MA) regularization loss.
+    Compute LLDS with Action-Level Gating (paper default).
 
-    L_LLDS = (1/N_tokens) * sum_{y_i in Y_pre}
-              1[sum_t(old_lp_t - new_lp_t) > 0]       # response-level gate
-              * sum_t max(0, old_lp_t - new_lp_t)     # token-level penalty
+    L_LLDS = (1/N_active_tokens) * sum_{i in Y_pre} sum_{t=0}^{T_i}
+              1[sum_{k in action_t} (old_lp_k - new_lp_k) > 0]   # action-level gate
+              * sum_{k in action_t} max(0, old_lp_k - new_lp_k)  # token-level penalty
+
+    Action boundaries are derived from loss_mask: consecutive 1-segments (separated
+    by information blocks where loss_mask=0) each form one action.
+    If loss_mask is not provided, falls back to response-level gating.
 
     Y_pre: responses with non-negative advantage (correct + untrained)
 
@@ -303,6 +308,8 @@ def compute_llds_loss(old_log_probs: torch.Tensor,
         new_log_probs: (bs, response_length) - log probs from current policy
         eos_mask: (bs, response_length) - valid token mask
         advantages: (bs, response_length) - per-token advantages
+        loss_mask: (bs, response_length) - 1 for action tokens (think+response),
+                   0 for information tokens. Used to detect action boundaries.
         answer_mask: (bs, response_length) - 1 for answer tokens, 0 otherwise
         mask_answer: whether to exclude answer tokens (LLDS-MA mode)
 
@@ -310,46 +317,80 @@ def compute_llds_loss(old_log_probs: torch.Tensor,
         llds_loss: scalar tensor
         metrics: dict
     """
+    bs, seq_len = old_log_probs.shape
+
     with torch.no_grad():
         # Y_pre: responses with non-negative advantage
-        # All tokens in a response share the same advantage value in GRPO
         response_advantages = advantages[:, 0]  # (bs,)
         preserve_mask = (response_advantages >= 0).float()  # (bs,)
 
-        # [LLDS-MA] Mask for regularization (exclude answer tokens if requested)
-        reg_mask = eos_mask.clone()
+        # Regularization mask: valid tokens only (ensure float)
+        reg_mask = eos_mask.float()
         if mask_answer and answer_mask is not None:
-            reg_mask = reg_mask * (1.0 - answer_mask)
+            reg_mask = reg_mask * (1.0 - answer_mask.float())
 
-        # Response-level gate: computed without grad (just a selection mask)
+        # Token displacement (detached for gate computation)
         token_disp_detached = (old_log_probs - new_log_probs.detach()) * reg_mask
-        response_displacement = token_disp_detached.sum(dim=-1)  # (bs,)
-        response_gate = (response_displacement > 0).float()  # (bs,)
 
-        # Combined activation mask
-        active_mask = preserve_mask * response_gate  # (bs,)
+        # Build action-level gate mask (per-token)
+        if loss_mask is not None:
+            # Detect action segment IDs from loss_mask transitions
+            # Each contiguous block of 1s in loss_mask is one action
+            # Transitions: 0->1 marks start of new action
+            loss_mask_f = loss_mask.float()
+            padded = torch.cat([torch.zeros(bs, 1, device=loss_mask.device), loss_mask_f], dim=1)
+            starts = (padded[:, 1:] - padded[:, :-1]) > 0  # (bs, seq_len) True at action starts
+            action_ids = starts.long().cumsum(dim=1) * loss_mask.long()  # 0 for info, 1,2,3... for actions
 
-        # Count for normalization
-        total_active_tokens = (reg_mask * active_mask.unsqueeze(-1)).sum()
+            # For each action segment, compute sum of displacement
+            max_actions = action_ids.max().item() + 1
+            # action_gate_mask: (bs, seq_len) - 1.0 if this token's action has displacement > 0
+            action_gate_mask = torch.zeros(bs, seq_len, device=reg_mask.device, dtype=torch.float32)
+
+            num_active_actions = 0
+            total_actions = 0
+
+            for aid in range(1, max_actions):
+                # Mask for this action across all batch items
+                seg_mask = (action_ids == aid).float() * reg_mask  # (bs, seq_len)
+                seg_disp = (token_disp_detached * seg_mask).sum(dim=-1)  # (bs,)
+                seg_active = (seg_disp > 0).float()  # (bs,) - gate per response for this action
+                # Broadcast gate back to tokens
+                action_gate_mask += seg_mask * seg_active.unsqueeze(-1)
+                # Stats
+                seg_exists = (seg_mask.sum(dim=-1) > 0).float()  # which batch items have this action
+                total_actions += (seg_exists * preserve_mask).sum().item()
+                num_active_actions += (seg_active * seg_exists * preserve_mask).sum().item()
+
+            # Combined: preserve_mask (response-level) * action_gate_mask (action-level per-token)
+            active_token_mask = reg_mask * action_gate_mask * preserve_mask.unsqueeze(-1)
+            total_active_tokens = active_token_mask.sum()
+        else:
+            # Fallback: response-level gate (original behavior)
+            response_displacement = token_disp_detached.sum(dim=-1)  # (bs,)
+            response_gate = (response_displacement > 0).float()  # (bs,)
+            active_mask = preserve_mask * response_gate  # (bs,)
+            active_token_mask = reg_mask * active_mask.unsqueeze(-1)
+            total_active_tokens = active_token_mask.sum()
+            num_active_actions = active_mask.sum().item()
+            total_actions = preserve_mask.sum().item()
 
     # Token-level penalty (WITH gradient through new_log_probs)
-    # max(0, old - new): gradient w.r.t. new is -1 when old > new, pushing likelihood up
     token_displacement = (old_log_probs - new_log_probs) * reg_mask
     token_penalty = torch.clamp(token_displacement, min=0.0)
 
-    # Per-response penalty
-    response_penalty = token_penalty.sum(dim=-1)  # (bs,)
-
-    # Normalize by total active tokens
+    # Apply action-level gate mask and normalize
+    masked_penalty = token_penalty * active_token_mask
     if total_active_tokens > 0:
-        llds_loss = (response_penalty * active_mask).sum() / total_active_tokens
+        llds_loss = masked_penalty.sum() / total_active_tokens
     else:
-        llds_loss = (response_penalty * 0.0).sum()  # zero but keeps computation graph
+        llds_loss = (token_penalty * 0.0).sum()  # zero but keeps computation graph
 
     metrics = {
-        'llds/num_active': active_mask.sum().item(),
+        'llds/num_active_actions': num_active_actions,
+        'llds/total_actions': total_actions,
         'llds/num_preserved': preserve_mask.sum().item(),
-        'llds/mean_displacement': response_displacement.mean().item(),
+        'llds/mean_token_disp': token_disp_detached.sum(dim=-1).mean().item(),
         'llds/loss': llds_loss.item(),
     }
 

@@ -22,9 +22,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 DEFAULT_CONFIG = {
-    "api_base": "https://oneapi-comate.baidu-int.com/v1",
-    "api_key": "sk-lFsuhIBP98RfWqKI4b68E447E46f433eBdF70b88Ea9eBbA9",
-    "model": "DeepSeek-V4-Flash",
+    "api_base": "https://api.deepseek.com/v1",
+    "api_key": "sk-0f269fc99a144679b6d3ddb3206bfc0d",
+    "model": "deepseek-chat",
     "temperature": 0.1,
     "max_tokens": 200,
     "timeout": 30,
@@ -118,8 +118,10 @@ class LLMJudgeV3:
         }
 
         old_env = {}
+        proxy_url = "http://agent.baidu.com:8891"
         for k in ['http_proxy', 'https_proxy', 'HTTP_PROXY', 'HTTPS_PROXY']:
-            old_env[k] = os.environ.pop(k, None)
+            old_env[k] = os.environ.get(k, None)
+            os.environ[k] = proxy_url
 
         try:
             for attempt in range(3):
@@ -147,6 +149,8 @@ class LLMJudgeV3:
             for k, v in old_env.items():
                 if v is not None:
                     os.environ[k] = v
+                else:
+                    os.environ.pop(k, None)
 
         return None
 
