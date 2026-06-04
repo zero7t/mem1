@@ -63,23 +63,6 @@ def compute_positional_weights(num_turns: int, beta: float = 0.3) -> np.ndarray:
     return 1.0 + beta * np.exp(-(t - t_peak)**2 / (2 * sigma**2))
 
 
-def compute_quality_scores(turn_scores: List[float], gamma: float = 1.5) -> np.ndarray:
-    """
-    Smooth quality normalization via tanh.
-
-    q(t) = tanh(gamma * (s_t - mean) / (std + eps))
-    Output bounded in [-1, 1].
-    """
-    scores = np.array(turn_scores, dtype=np.float64)
-    if len(scores) <= 1:
-        return np.zeros_like(scores)
-    mean = scores.mean()
-    std = scores.std()
-    if std < 1e-6:
-        return np.zeros_like(scores)
-    normalized = gamma * (scores - mean) / (std + 1e-6)
-    return np.tanh(normalized)
-
 def compute_turn_weights(
     turn_scores: List[float],
     alpha: float = 0.3,
@@ -87,15 +70,37 @@ def compute_turn_weights(
     sign_a: float = 1.0,
 ) -> np.ndarray:
     """
-    Turn weight based purely on quality score (no positional prior).
+    Proportional turn weight with concave (sin-shaped) mapping.
 
-    w(t) = 1 + α · sign(A) · quality(t)
+    Steps:
+      1. deviation(t) = (s_t - mean) / (range + eps)  → ∈ [-1, 1]
+      2. mapped(t) = sin(π/2 * deviation)             → ∈ [-1, 1], concave
+      3. w(t) = 1 + alpha * sign(A) * mapped(t)       → ∈ [1-alpha, 1+alpha]
+
+    The sin mapping (concave for x>0, convex for x<0):
+    - Small deviations → weight stays close to 1.0 (slope=π/2≈1.57 at origin, but curvature pulls back)
+    - Large deviations → approaches ±alpha but with diminishing returns
+    - Net effect: compresses weight variance, only clearly different turns get meaningful weight shift
     """
     n = len(turn_scores)
     if n <= 1:
         return np.array([1.0])
-    quality = compute_quality_scores(turn_scores, gamma)
-    return 1.0 + alpha * sign_a * quality
+
+    scores = np.array(turn_scores, dtype=np.float64)
+    mean = scores.mean()
+    score_range = scores.max() - scores.min()
+
+    if score_range < 1e-6:
+        return np.ones(n)
+
+    # Normalize to [-1, 1]
+    deviation = (scores - mean) / score_range
+    deviation = np.clip(deviation, -1.0, 1.0)
+
+    # Concave mapping: sin(π/2 * x)
+    mapped = np.sin(np.pi / 2.0 * deviation)
+
+    return 1.0 + alpha * sign_a * mapped
 
 
 def find_turn_boundaries(response_text: str, response_length: int) -> List[Tuple[int, int]]:
@@ -175,23 +180,14 @@ def apply_turn_weighted_advantage(
         boundaries = find_turn_boundaries(text, resp_len)
         weights = compute_turn_weights(scores, alpha, gamma, sign_a)
 
-        # Distribute total advantage by turn weight, preserving total.
-        # turn_budget_t = traj_adv_sum * weight_t / weight_sum
-        # per_token_t = turn_budget_t / num_tokens_t
-        weight_sum = sum(
-            weights[t] for t, (s, e) in enumerate(boundaries)
-            if t < len(weights) and s < min(e, resp_len)
-        )
-        if weight_sum < 1e-8:
-            continue
+        # V3 original: multiplicative weighting (no length bias)
+        # Each token keeps its original advantage, scaled by turn weight
         for t, (start, end) in enumerate(boundaries):
             if t >= len(weights):
                 break
             end = min(end, resp_len)
             if start >= end:
                 continue
-            num_tokens_t = end - start
-            per_token_adv = traj_adv_sum * weights[t] / (weight_sum * num_tokens_t)
-            weighted[i, start:end] = per_token_adv
+            weighted[i, start:end] = advantages[i, start:end] * weights[t]
 
     return weighted * eos_mask
