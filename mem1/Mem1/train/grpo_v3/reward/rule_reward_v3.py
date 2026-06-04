@@ -177,17 +177,22 @@ def format_penalty_tokens(
 
 def efficiency_reward(num_turns: int, max_turns: int, is_correct: bool) -> float:
     """
-    Reward fewer turns for correct answers.
-    Only activates when outcome is correct.
+    Reward fewer turns for correct answers; penalize fast-wrong (too few turns when incorrect).
 
-    Formula: reward = 0.3 * (max_turns - num_turns) / max_turns
+    Correct: reward = 0.1 * (max_turns - num_turns) / max_turns
+    Incorrect + too few turns: penalty = -0.1 * (max_turns - num_turns) / max_turns
     """
-    if not is_correct or num_turns <= 0:
+    if num_turns <= 0:
         return 0.0
     saved = max_turns - num_turns
     if saved <= 0:
         return 0.0
-    return 0.3 * saved / max_turns
+    if is_correct:
+        # Reward for being efficient when correct
+        return 0.1 * saved / max_turns
+    else:
+        # Penalize for giving up too quickly (fast-wrong)
+        return -0.1 * saved / max_turns
 
 
 # =============================================================================
